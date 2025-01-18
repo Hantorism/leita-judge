@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	language := "C"
+	language := "Java"
 	problemId := "1000"
 	testcases := 2
 	command := Commands[language]

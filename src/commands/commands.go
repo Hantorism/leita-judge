@@ -14,4 +14,8 @@ var Commands = map[string]Command{
 		BuildCmd: []string{"g++", "-o", "submit", "submit.cpp"},
 		RunCmd:   []string{"./submit"},
 	},
+	"Java": {
+		BuildCmd: []string{"javac", "Main.java"},
+		RunCmd:   []string{"java", "Main"},
+	},
 }
