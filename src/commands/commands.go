@@ -27,4 +27,9 @@ var Commands = map[string]Command{
 		BuildCmd:     []string{},
 		RunCmd:       []string{"python3", "submit/submit.py"},
 	},
+	"Javascript": {
+		RequireBuild: false,
+		BuildCmd:     []string{},
+		RunCmd:       []string{"node", "submit/submit.js"},
+	},
 }

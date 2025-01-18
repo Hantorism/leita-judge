@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	language := "Python"
+	language := "Javascript"
 	problemId := "1000"
 	testcases := 2
 	command := Commands[language]
@@ -22,21 +22,20 @@ func main() {
 	fmt.Println("빌드 명령어:", command.BuildCmd)
 	fmt.Println("실행 명령어:", command.RunCmd)
 
-	buildSource(language, command)
+	buildSource(language, command.RequireBuild, command.BuildCmd)
 	results := judge(command.RunCmd, problemId, testcases)
 	report(results)
 }
 
-func buildSource(language string, command Command) {
+func buildSource(language string, requireBuild bool, buildCmd []string) {
 	fmt.Println("-----------------------")
 	fmt.Println("소스 파일을 빌드 중...")
 
-	if !command.RequireBuild {
+	if !requireBuild {
 		fmt.Println(language + " 빌드 생략")
 		return
 	}
 
-	buildCmd := command.BuildCmd
 	cmd := exec.Command(buildCmd[0], buildCmd[1:]...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
