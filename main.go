@@ -12,10 +12,15 @@ import (
 )
 
 func main() {
-	language := "CPP"
+	language := "C"
 	problemId := "1000"
 	testcases := 2
 	command := Commands[language]
+
+	fmt.Println("언어:", language)
+	fmt.Println("문제 번호:", problemId)
+	fmt.Println("빌드 명령어:", command.BuildCmd)
+	fmt.Println("실행 명령어:", command.RunCmd)
 
 	buildSource(command.BuildCmd)
 	results := judge(command.RunCmd, problemId, testcases)
@@ -23,6 +28,7 @@ func main() {
 }
 
 func buildSource(buildCmd []string) {
+	fmt.Println("-----------------------")
 	fmt.Println("소스 파일을 빌드 중...")
 
 	cmd := exec.Command(buildCmd[0], buildCmd[1:]...)
