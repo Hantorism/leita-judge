@@ -64,6 +64,7 @@ func judge(runCmd []string, testcases int) []bool {
 			return nil
 		}
 		result := outputBuffer.Bytes()
+		result = removeLineFeed(result)
 
 		outputFile := "problem/1000/out/" + strconv.Itoa(i) + ".out"
 		outputContents, err := ioutil.ReadFile(outputFile)
@@ -92,4 +93,11 @@ func report(results []bool) {
 		return
 	}
 	fmt.Println("문제를 맞췄습니다!")
+}
+
+func removeLineFeed(result []byte) []byte {
+	if len(result) > 0 && result[len(result)-1] == 10 {
+		return result[:len(result)-1]
+	}
+	return result
 }
