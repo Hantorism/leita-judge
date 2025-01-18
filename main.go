@@ -63,8 +63,8 @@ func judge(runCmd []string, testcases int) []bool {
 			fmt.Printf("프로그램 실행 실패: %v\n", err)
 			return nil
 		}
-		result := outputBuffer.Bytes()
-		result = removeLineFeed(result)
+		output := outputBuffer.Bytes()
+		output = removeLineFeed(output)
 
 		outputFile := "problem/1000/out/" + strconv.Itoa(i) + ".out"
 		outputContents, err := ioutil.ReadFile(outputFile)
@@ -73,14 +73,8 @@ func judge(runCmd []string, testcases int) []bool {
 			return nil
 		}
 
-		fmt.Println("결과를 비교 중...")
-		if bytes.Equal(result, outputContents) {
-			fmt.Println("결과가 일치합니다!")
-			results = append(results, true)
-		} else {
-			fmt.Println("결과가 일치하지 않습니다.")
-			results = append(results, false)
-		}
+		result := checkDifference(output, outputContents)
+		results = append(results, result)
 	}
 
 	return results
@@ -95,9 +89,19 @@ func report(results []bool) {
 	fmt.Println("문제를 맞췄습니다!")
 }
 
-func removeLineFeed(result []byte) []byte {
-	if len(result) > 0 && result[len(result)-1] == 10 {
-		return result[:len(result)-1]
+func removeLineFeed(output []byte) []byte {
+	if len(output) > 0 && output[len(output)-1] == 10 {
+		return output[:len(output)-1]
 	}
-	return result
+	return output
+}
+
+func checkDifference(result, outputContents []byte) bool {
+	fmt.Println("결과를 비교 중...")
+	if !bytes.Equal(result, outputContents) {
+		fmt.Println("결과가 일치하지 않습니다.")
+		return false
+	}
+	fmt.Println("결과가 일치합니다!")
+	return true
 }
