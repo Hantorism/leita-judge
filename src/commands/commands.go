@@ -37,4 +37,9 @@ var Commands = map[string]Command{
 		BuildCmd:     []string{"go", "build", "-o", "bin/submit", "submit/submit.go"},
 		RunCmd:       []string{"bin/submit"},
 	},
+	"Kotlin": {
+		RequireBuild: true,
+		BuildCmd:     []string{"kotlinc", "submit/submit.kt", "-include-runtime", "-d", "bin/submit.jar"},
+		RunCmd:       []string{"java", "-jar", "bin/submit.jar"},
+	},
 }
