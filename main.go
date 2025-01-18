@@ -50,21 +50,11 @@ func judge(runCmd []string, testcases int) []bool {
 			return nil
 		}
 
-		fmt.Println("프로그램 실행 중...")
-		cmd := exec.Command(runCmd[0], runCmd[1:]...)
-		cmd.Stdin = bytes.NewReader(inputContents)
-
-		outputBuffer := new(bytes.Buffer)
-		cmd.Stdout = outputBuffer
-		cmd.Stderr = os.Stderr
-
-		err = cmd.Run()
+		output, err := executeProgram(runCmd, inputContents)
 		if err != nil {
 			fmt.Printf("프로그램 실행 실패: %v\n", err)
 			return nil
 		}
-		output := outputBuffer.Bytes()
-		output = removeLineFeed(output)
 
 		outputFile := "problem/1000/out/" + strconv.Itoa(i) + ".out"
 		outputContents, err := ioutil.ReadFile(outputFile)
@@ -94,6 +84,25 @@ func removeLineFeed(output []byte) []byte {
 		return output[:len(output)-1]
 	}
 	return output
+}
+
+func executeProgram(runCmd []string, inputContents []byte) ([]byte, error) {
+	fmt.Println("프로그램 실행 중...")
+	cmd := exec.Command(runCmd[0], runCmd[1:]...)
+	cmd.Stdin = bytes.NewReader(inputContents)
+
+	outputBuffer := new(bytes.Buffer)
+	cmd.Stdout = outputBuffer
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("%w", err)
+	}
+
+	output := outputBuffer.Bytes()
+	output = removeLineFeed(output)
+	return output, nil
 }
 
 func checkDifference(result, outputContents []byte) bool {
