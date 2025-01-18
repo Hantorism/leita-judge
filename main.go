@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	language := "Javascript"
+	language := "Go"
 	problemId := "1000"
 	testcases := 2
 	command := Commands[language]

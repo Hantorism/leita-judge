@@ -32,4 +32,9 @@ var Commands = map[string]Command{
 		BuildCmd:     []string{},
 		RunCmd:       []string{"node", "submit/submit.js"},
 	},
+	"Go": {
+		RequireBuild: true,
+		BuildCmd:     []string{"go", "build", "-o", "bin/submit", "submit/submit.go"},
+		RunCmd:       []string{"bin/submit"},
+	},
 }
