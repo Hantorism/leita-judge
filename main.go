@@ -12,12 +12,13 @@ import (
 )
 
 func main() {
-	language := "C"
+	language := "CPP"
+	problemId := "1000"
 	testcases := 2
 	command := Commands[language]
 
 	buildSource(command.BuildCmd)
-	results := judge(command.RunCmd, testcases)
+	results := judge(command.RunCmd, problemId, testcases)
 	report(results)
 }
 
@@ -36,14 +37,14 @@ func buildSource(buildCmd []string) {
 	fmt.Println("빌드 완료!")
 }
 
-func judge(runCmd []string, testcases int) []bool {
+func judge(runCmd []string, problemId string, testcases int) []bool {
 	results := make([]bool, 0, testcases)
 
 	for i := 0; i < testcases; i++ {
 		fmt.Println("-----------------------")
 		fmt.Printf("%d번째 테스트케이스 실행\n", i+1)
 
-		inputFile := "problem/1000/in/" + strconv.Itoa(i) + ".in"
+		inputFile := "problem/" + problemId + "/in/" + strconv.Itoa(i) + ".in"
 		inputContents, err := ioutil.ReadFile(inputFile)
 		if err != nil {
 			fmt.Printf("입력 파일 읽기 실패: %v\n", err)
@@ -56,7 +57,7 @@ func judge(runCmd []string, testcases int) []bool {
 			return nil
 		}
 
-		outputFile := "problem/1000/out/" + strconv.Itoa(i) + ".out"
+		outputFile := "problem/" + problemId + "/out/" + strconv.Itoa(i) + ".out"
 		outputContents, err := ioutil.ReadFile(outputFile)
 		if err != nil {
 			fmt.Printf(".out 파일 읽기 실패: %v\n", err)
