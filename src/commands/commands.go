@@ -9,42 +9,42 @@ type Command struct {
 var Commands = map[string]Command{
 	"C": {
 		RequireBuild: true,
-		BuildCmd:     []string{"gcc", "-o", "bin/submit", "submit/submit.c"},
-		RunCmd:       []string{"bin/submit"},
+		BuildCmd:     []string{"gcc", "-o", "bin/Main", "submit/Main.c"},
+		RunCmd:       []string{"bin/Main"},
 	},
 	"CPP": {
 		RequireBuild: true,
-		BuildCmd:     []string{"g++", "-o", "bin/submit", "submit/submit.cpp"},
-		RunCmd:       []string{"bin/submit"},
+		BuildCmd:     []string{"g++", "-o", "bin/Main", "submit/Main.cpp"},
+		RunCmd:       []string{"bin/Main"},
 	},
-	"Java": {
+	"JAVA": {
 		RequireBuild: true,
 		BuildCmd:     []string{"javac", "-d", "bin", "submit/Main.java"},
 		RunCmd:       []string{"java", "-cp", "bin", "Main"},
 	},
-	"Python": {
+	"PYTHON": {
 		RequireBuild: false,
 		BuildCmd:     []string{},
-		RunCmd:       []string{"python3", "submit/submit.py"},
+		RunCmd:       []string{"python3", "submit/Main.py"},
 	},
-	"Javascript": {
+	"JAVASCRIPT": {
 		RequireBuild: false,
 		BuildCmd:     []string{},
-		RunCmd:       []string{"node", "submit/submit.js"},
+		RunCmd:       []string{"node", "submit/Main.js"},
 	},
-	"Go": {
+	"GO": {
 		RequireBuild: true,
-		BuildCmd:     []string{"go", "build", "-o", "bin/submit", "submit/submit.go"},
-		RunCmd:       []string{"bin/submit"},
+		BuildCmd:     []string{"go", "build", "-o", "bin/Main", "submit/Main.go"},
+		RunCmd:       []string{"bin/Main"},
 	},
-	"Kotlin": {
+	"KOTLIN": {
 		RequireBuild: true,
-		BuildCmd:     []string{"kotlinc", "submit/submit.kt", "-include-runtime", "-d", "bin/submit.jar"},
-		RunCmd:       []string{"java", "-jar", "bin/submit.jar"},
+		BuildCmd:     []string{"kotlinc", "submit/Main.kt", "-include-runtime", "-d", "bin/Main.jar"},
+		RunCmd:       []string{"java", "-jar", "bin/Main.jar"},
 	},
-	"Swift": {
+	"SWIFT": {
 		RequireBuild: true,
-		BuildCmd:     []string{"swiftc", "-o", "bin/submit", "submit/submit.swift"},
-		RunCmd:       []string{"bin/submit"},
+		BuildCmd:     []string{"swiftc", "-o", "bin/Main", "submit/Main.swift"},
+		RunCmd:       []string{"bin/Main"},
 	},
 }
