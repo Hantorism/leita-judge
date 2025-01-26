@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	language := "SWIFT"
+	language := "C"
 	problemId := "1000"
 	testcases := 2
 	command := Commands[language]
@@ -86,6 +86,10 @@ func judge(runCmd []string, problemId string, testcases int) []bool {
 
 func report(results []bool) {
 	fmt.Println("-----------------------")
+	if len(results) < 1 {
+		fmt.Println("문제 채점 중 이상이 있습니다.")
+		return
+	}
 	if !All(results) {
 		fmt.Println("문제를 틀렸습니다.")
 		return
