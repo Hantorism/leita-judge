@@ -21,10 +21,12 @@ func main() {
 	fmt.Println("문제 번호:", problemId)
 	fmt.Println("빌드 명령어:", command.BuildCmd)
 	fmt.Println("실행 명령어:", command.RunCmd)
+	fmt.Println("삭제 명령어:", command.DeleteCmd)
 
 	buildSource(language, command.RequireBuild, command.BuildCmd)
 	results := judge(command.RunCmd, problemId, testcases)
 	report(results)
+	deleteProgram(language, command.RequireBuild, command.DeleteCmd)
 }
 
 func buildSource(language string, requireBuild bool, buildCmd []string) {
@@ -125,4 +127,25 @@ func checkDifference(result, outputContents []byte) bool {
 	}
 	fmt.Println("결과가 일치합니다!")
 	return true
+}
+
+func deleteProgram(language string, requireBuild bool, deleteCmd []string) {
+	fmt.Println("-----------------------")
+	fmt.Println("생성된 실행 파일 삭제 중...")
+
+	if !requireBuild {
+		fmt.Println(language + " 삭제 생략")
+		return
+	}
+
+	cmd := exec.Command(deleteCmd[0], deleteCmd[1:]...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Run()
+	if err != nil {
+		fmt.Printf("실행 파일 삭제 실패: %v\n", err)
+		return
+	}
+	fmt.Println("실행 파일 삭제 완료!")
 }
