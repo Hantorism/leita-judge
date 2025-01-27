@@ -7,36 +7,16 @@ import (
 	"io/ioutil"
 	. "leita/src/commands"
 	. "leita/src/function"
+	. "leita/src/models"
+	. "leita/src/utils"
 	"os"
 	"os/exec"
 	"strconv"
 )
 
 type JudgeRequest struct {
-	Language  string `json:"language"`
-	ProblemID string `json:"problemId"`
-	TestCases int    `json:"testcases"`
-}
-
-type JudgeResult int
-
-const (
-	JudgePass JudgeResult = iota
-	JudgeFail
-	JudgeError
-)
-
-func (jr JudgeResult) String() string {
-	switch jr {
-	case JudgeError:
-		return "채점 중 이상이 있습니다."
-	case JudgeFail:
-		return "문제를 틀렸습니다."
-	case JudgePass:
-		return "문제를 맞췄습니다!"
-	default:
-		return "error"
-	}
+	Language string `json:"language"`
+	Code     string `json:"code"`
 }
 
 func JudgeProblem(c fiber.Ctx) error {
@@ -47,19 +27,19 @@ func JudgeProblem(c fiber.Ctx) error {
 		})
 	}
 
-	language := req.Language
-	testcases := req.TestCases
 	problemId := c.Params("problemId")
+	language := req.Language
+	code := Decode(req.Code)
+	testcases := 2
 	command := Commands[language]
 
 	fmt.Println("언어:", language)
 	fmt.Println("문제 번호:", problemId)
-	fmt.Println("빌드 명령어:", command.BuildCmd)
-	fmt.Println("실행 명령어:", command.RunCmd)
-	fmt.Println("삭제 명령어:", command.DeleteCmd)
+	fmt.Println("제출 코드:")
+	fmt.Println(code)
 
-	if err := buildSource(language, command.RequireBuild, command.BuildCmd); err != nil {
-		return c.JSON(fiber.Map{
+	if err := buildSource(language, problemId, code, command.RequireBuild, command.BuildCmd); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"isSuccessful": false,
 			"error":        err.Error(),
 		})
@@ -69,27 +49,33 @@ func JudgeProblem(c fiber.Ctx) error {
 
 	results, err := judge(command.RunCmd, problemId, testcases)
 	if err != nil {
-		return c.JSON(fiber.Map{
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"isSuccessful": false,
 			"error":        err.Error(),
 		})
 	}
 
 	if judgeResult := report(results); judgeResult != JudgePass {
-		return c.JSON(fiber.Map{
+		return c.Status(fiber.StatusOK).JSON(fiber.Map{
 			"isSuccessful": false,
 		})
 	}
 
-	return c.JSON(fiber.Map{
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"isSuccessful": true,
 	})
 }
 
-func buildSource(language string, requireBuild bool, buildCmd []string) error {
+func buildSource(language, problemId, code string, requireBuild bool, buildCmd []string) error {
 	fmt.Println("-----------------------")
-	fmt.Println("소스 파일을 빌드 중...")
+	fmt.Println("소스 파일 저장 중...")
+	inputFile := "submit/temp/Main." + FileExtension(language)
+	if err := WriteStringToFile(inputFile, code); err != nil {
+		return fmt.Errorf("파일 저장 실패: %v\n", err)
+	}
+	fmt.Println("저장 완료!")
 
+	fmt.Println("소스 파일 빌드 중...")
 	if !requireBuild {
 		fmt.Println(language + " 빌드 생략")
 		return nil
