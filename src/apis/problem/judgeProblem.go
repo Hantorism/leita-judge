@@ -36,7 +36,7 @@ func JudgeProblem(c fiber.Ctx) error {
 	fmt.Println("언어:", language)
 	fmt.Println("문제 번호:", problemId)
 	fmt.Println("제출 코드:")
-	fmt.Println(code)
+	fmt.Println(string(code))
 
 	if err := buildSource(language, problemId, code, command.RequireBuild, command.BuildCmd); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -66,11 +66,11 @@ func JudgeProblem(c fiber.Ctx) error {
 	})
 }
 
-func buildSource(language, problemId, code string, requireBuild bool, buildCmd []string) error {
+func buildSource(language, problemId string, code []byte, requireBuild bool, buildCmd []string) error {
 	fmt.Println("-----------------------")
 	fmt.Println("소스 파일 저장 중...")
 	inputFile := "submit/temp/Main." + FileExtension(language)
-	if err := WriteStringToFile(inputFile, code); err != nil {
+	if err := WriteStringToFile(inputFile, string(code)); err != nil {
 		return fmt.Errorf("파일 저장 실패: %v\n", err)
 	}
 	fmt.Println("저장 완료!")
