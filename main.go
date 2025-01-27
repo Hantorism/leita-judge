@@ -8,9 +8,12 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/logger"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	. "leita/src/routes"
+	. "leita/src/utils"
 )
 
 func main() {
+	initialize()
+
 	app := fiber.New()
 
 	app.Use(recover.New())
@@ -21,4 +24,8 @@ func main() {
 	RegisterRoutes(app)
 
 	log.Fatal(app.Listen(":1323"))
+}
+
+func initialize() {
+	MakeBinDir()
 }
