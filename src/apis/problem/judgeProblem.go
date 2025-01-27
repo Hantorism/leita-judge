@@ -1,4 +1,4 @@
-package judge
+package problem
 
 import (
 	"bytes"
@@ -27,8 +27,8 @@ func JudgeProblem(c fiber.Ctx) error {
 	}
 
 	language := req.Language
-	problemId := req.ProblemID
 	testcases := req.TestCases
+	problemId := c.Params("problemId")
 	command := Commands[language]
 
 	fmt.Println("언어:", language)
