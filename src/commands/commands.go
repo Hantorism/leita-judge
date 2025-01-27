@@ -12,8 +12,7 @@ var Commands = map[string]Command{
 		RequireBuild: true,
 		BuildCmd:     []string{"gcc", "-o", "bin/Main", "submit/Main.c"},
 		RunCmd:       []string{"bin/Main"},
-		//DeleteCmd:    []string{"rm", "bin/Main"},
-		DeleteCmd: []string{"rm", "-rf", "bin/"},
+		DeleteCmd:    []string{"rm", "bin/Main"},
 	},
 	"CPP": {
 		RequireBuild: true,
