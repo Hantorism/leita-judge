@@ -75,8 +75,7 @@ func JudgeProblem(c fiber.Ctx) error {
 		})
 	}
 
-	judgeResult := report(results)
-	if judgeResult != JudgePass {
+	if judgeResult := report(results); judgeResult != JudgePass {
 		return c.JSON(fiber.Map{
 			"isSuccessful": false,
 		})
@@ -100,10 +99,10 @@ func buildSource(language string, requireBuild bool, buildCmd []string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	err := cmd.Run()
-	if err != nil {
+	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("소스 파일 빌드 실패: %v\n", err)
 	}
+
 	fmt.Println("빌드 완료!")
 	return nil
 }
@@ -169,8 +168,7 @@ func executeProgram(runCmd []string, inputContents []byte) ([]byte, error) {
 	cmd.Stdout = outputBuffer
 	cmd.Stderr = os.Stderr
 
-	err := cmd.Run()
-	if err != nil {
+	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("%w", err)
 	}
 
@@ -202,8 +200,7 @@ func deleteProgram(language string, requireBuild bool, deleteCmd []string) {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	err := cmd.Run()
-	if err != nil {
+	if err := cmd.Run(); err != nil {
 		fmt.Printf("실행 파일 삭제 실패: %v\n", err)
 		return
 	}
