@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/gofiber/fiber/v3"
-	"io/ioutil"
 	. "leita/src/commands"
 	. "leita/src/function"
 	. "leita/src/models"
@@ -70,7 +69,7 @@ func buildSource(language string, code []byte, requireBuild bool, buildCmd []str
 	fmt.Println("-----------------------")
 	fmt.Println("소스 파일 저장 중...")
 	inputFile := "submit/temp/Main." + FileExtension(language)
-	if err := WriteStringToFile(inputFile, string(code)); err != nil {
+	if err := os.WriteFile(inputFile, code, 0644); err != nil {
 		return fmt.Errorf("파일 저장 실패: %v\n", err)
 	}
 	fmt.Println("저장 완료!")
@@ -101,7 +100,7 @@ func judge(runCmd []string, problemId string, testcases int) ([]bool, error) {
 		fmt.Printf("%d번째 테스트케이스 실행\n", i+1)
 
 		inputFile := "problem/" + problemId + "/in/" + strconv.Itoa(i) + ".in"
-		inputContents, err := ioutil.ReadFile(inputFile)
+		inputContents, err := os.ReadFile(inputFile)
 		if err != nil {
 			return nil, fmt.Errorf("입력 파일 읽기 실패: %v\n", err)
 		}
@@ -112,7 +111,7 @@ func judge(runCmd []string, problemId string, testcases int) ([]bool, error) {
 		}
 
 		outputFile := "problem/" + problemId + "/out/" + strconv.Itoa(i) + ".out"
-		outputContents, err := ioutil.ReadFile(outputFile)
+		outputContents, err := os.ReadFile(outputFile)
 		if err != nil {
 			return nil, fmt.Errorf(".out 파일 읽기 실패: %v\n", err)
 		}
