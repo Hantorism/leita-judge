@@ -18,6 +18,27 @@ type JudgeRequest struct {
 	TestCases int    `json:"testcases"`
 }
 
+type JudgeResult int
+
+const (
+	JudgePass JudgeResult = iota
+	JudgeFail
+	JudgeError
+)
+
+func (jr JudgeResult) String() string {
+	switch jr {
+	case JudgeError:
+		return "채점 중 이상이 있습니다."
+	case JudgeFail:
+		return "문제를 틀렸습니다."
+	case JudgePass:
+		return "문제를 맞췄습니다!"
+	default:
+		return "error"
+	}
+}
+
 func JudgeProblem(c fiber.Ctx) error {
 	var req JudgeRequest
 	if err := c.Bind().Body(&req); err != nil {
@@ -37,23 +58,42 @@ func JudgeProblem(c fiber.Ctx) error {
 	fmt.Println("실행 명령어:", command.RunCmd)
 	fmt.Println("삭제 명령어:", command.DeleteCmd)
 
-	buildSource(language, command.RequireBuild, command.BuildCmd)
-	results := judge(command.RunCmd, problemId, testcases)
-	report(results)
-	deleteProgram(language, command.RequireBuild, command.DeleteCmd)
+	if err := buildSource(language, command.RequireBuild, command.BuildCmd); err != nil {
+		return c.JSON(fiber.Map{
+			"isSuccessful": false,
+			"error":        err.Error(),
+		})
+	}
+
+	defer deleteProgram(language, command.RequireBuild, command.DeleteCmd)
+
+	results, err := judge(command.RunCmd, problemId, testcases)
+	if err != nil {
+		return c.JSON(fiber.Map{
+			"isSuccessful": false,
+			"error":        err.Error(),
+		})
+	}
+
+	judgeResult := report(results)
+	if judgeResult != JudgePass {
+		return c.JSON(fiber.Map{
+			"isSuccessful": false,
+		})
+	}
 
 	return c.JSON(fiber.Map{
 		"isSuccessful": true,
 	})
 }
 
-func buildSource(language string, requireBuild bool, buildCmd []string) {
+func buildSource(language string, requireBuild bool, buildCmd []string) error {
 	fmt.Println("-----------------------")
 	fmt.Println("소스 파일을 빌드 중...")
 
 	if !requireBuild {
 		fmt.Println(language + " 빌드 생략")
-		return
+		return nil
 	}
 
 	cmd := exec.Command(buildCmd[0], buildCmd[1:]...)
@@ -62,13 +102,13 @@ func buildSource(language string, requireBuild bool, buildCmd []string) {
 
 	err := cmd.Run()
 	if err != nil {
-		fmt.Printf("소스 파일 빌드 실패: %v\n", err)
-		return
+		return fmt.Errorf("소스 파일 빌드 실패: %v\n", err)
 	}
 	fmt.Println("빌드 완료!")
+	return nil
 }
 
-func judge(runCmd []string, problemId string, testcases int) []bool {
+func judge(runCmd []string, problemId string, testcases int) ([]bool, error) {
 	results := make([]bool, 0, testcases)
 
 	for i := 0; i < testcases; i++ {
@@ -78,41 +118,39 @@ func judge(runCmd []string, problemId string, testcases int) []bool {
 		inputFile := "problem/" + problemId + "/in/" + strconv.Itoa(i) + ".in"
 		inputContents, err := ioutil.ReadFile(inputFile)
 		if err != nil {
-			fmt.Printf("입력 파일 읽기 실패: %v\n", err)
-			return nil
+			return nil, fmt.Errorf("입력 파일 읽기 실패: %v\n", err)
 		}
 
 		output, err := executeProgram(runCmd, inputContents)
 		if err != nil {
-			fmt.Printf("프로그램 실행 실패: %v\n", err)
-			return nil
+			return nil, fmt.Errorf("프로그램 실행 실패: %v\n", err)
 		}
 
 		outputFile := "problem/" + problemId + "/out/" + strconv.Itoa(i) + ".out"
 		outputContents, err := ioutil.ReadFile(outputFile)
 		if err != nil {
-			fmt.Printf(".out 파일 읽기 실패: %v\n", err)
-			return nil
+			return nil, fmt.Errorf(".out 파일 읽기 실패: %v\n", err)
 		}
 
 		result := checkDifference(output, outputContents)
 		results = append(results, result)
 	}
 
-	return results
+	return results, nil
 }
 
-func report(results []bool) {
+func report(results []bool) JudgeResult {
 	fmt.Println("-----------------------")
 	if len(results) < 1 {
-		fmt.Println("문제 채점 중 이상이 있습니다.")
-		return
+		fmt.Println(JudgeError.String())
+		return JudgeError
 	}
 	if !All(results) {
-		fmt.Println("문제를 틀렸습니다.")
-		return
+		fmt.Println(JudgeFail.String())
+		return JudgeFail
 	}
-	fmt.Println("문제를 맞췄습니다!")
+	fmt.Println(JudgePass.String())
+	return JudgePass
 }
 
 func removeLineFeed(output []byte) []byte {
