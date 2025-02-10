@@ -10,13 +10,13 @@ type Command struct {
 var Commands = map[string]Command{
 	"C": {
 		RequireBuild: true,
-		BuildCmd:     []string{"gcc", "-o", "bin/Main", "submit/Main.c"},
+		BuildCmd:     []string{"gcc", "submit/temp/Main.c", "-o", "bin/Main", "-O2", "-Wall", "-lm", "-static", "-std=gnu99"},
 		RunCmd:       []string{"bin/Main"},
 		DeleteCmd:    []string{"rm", "bin/Main"},
 	},
 	"CPP": {
 		RequireBuild: true,
-		BuildCmd:     []string{"g++", "-o", "bin/Main", "submit/Main.cpp"},
+		BuildCmd:     []string{"g++", "submit/temp/Main.cpp", "-o", "bin/Main", "-O2", "-Wall", "-lm", "-static", "-std=gnu++17"},
 		RunCmd:       []string{"bin/Main"},
 		DeleteCmd:    []string{"rm", "bin/Main"},
 	},
