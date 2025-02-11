@@ -3,14 +3,15 @@ package problem
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"os/exec"
+	"strconv"
+
 	"github.com/gofiber/fiber/v3"
 	. "leita/src/commands"
 	. "leita/src/function"
 	. "leita/src/models"
 	. "leita/src/utils"
-	"os"
-	"os/exec"
-	"strconv"
 )
 
 type JudgeRequest struct {
@@ -163,6 +164,11 @@ func executeProgram(runCmd []string, inputContents []byte) ([]byte, error) {
 }
 
 func checkDifference(result, outputContents []byte) bool {
+	fmt.Println("예상 결과")
+	fmt.Println(string(result))
+	fmt.Println("실제 결과")
+	fmt.Println(string(outputContents))
+
 	fmt.Println("결과를 비교 중...")
 	if !bytes.Equal(result, outputContents) {
 		fmt.Println("결과가 일치하지 않습니다.")
