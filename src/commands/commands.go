@@ -22,8 +22,8 @@ var Commands = map[string]Command{
 	},
 	"JAVA": {
 		RequireBuild: true,
-		BuildCmd:     []string{"javac", "-d", "bin", "submit/Main.java"},
-		RunCmd:       []string{"java", "-cp", "bin", "Main"},
+		BuildCmd:     []string{"javac", "-J-Xms1024m", "-J-Xmx1920m", "-J-Xss512m", "-encoding UTF-8", "-d", "bin", "submit/temp/Main.java"},
+		RunCmd:       []string{"java", "-Xms1024m", "-Xmx1920m", "-Xss512m", "-Dfile.encoding=UTF-8", "-XX:+UseSerialGC", "-cp", "bin", "Main"},
 		DeleteCmd:    []string{"rm", "bin/Main.class"},
 	},
 	"PYTHON": {
