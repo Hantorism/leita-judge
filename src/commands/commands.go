@@ -29,7 +29,7 @@ var Commands = map[string]Command{
 	"PYTHON": {
 		RequireBuild: false,
 		BuildCmd:     []string{},
-		RunCmd:       []string{"python3", "-W", "ignore", "submit/Main.py"},
+		RunCmd:       []string{"python3", "-W", "ignore", "submit/temp/Main.py"},
 		DeleteCmd:    []string{},
 	},
 	"JAVASCRIPT": {
