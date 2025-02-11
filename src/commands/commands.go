@@ -35,7 +35,7 @@ var Commands = map[string]Command{
 	"JAVASCRIPT": {
 		RequireBuild: false,
 		BuildCmd:     []string{},
-		RunCmd:       []string{"node", "submit/Main.js"},
+		RunCmd:       []string{"node", "--stack-size=65536", "submit/Main.js"},
 		DeleteCmd:    []string{},
 	},
 	"GO": {
