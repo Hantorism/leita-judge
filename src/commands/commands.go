@@ -52,7 +52,7 @@ var Commands = map[string]Command{
 	},
 	"SWIFT": {
 		RequireBuild: true,
-		BuildCmd:     []string{"swiftc", "-o", "bin/Main", "submit/temp/Main.swift"},
+		BuildCmd:     []string{"swiftc", "-O", "-o", "bin/Main", "submit/temp/Main.swift"},
 		RunCmd:       []string{"bin/Main"},
 		DeleteCmd:    []string{"rm", "bin/Main"},
 	},
