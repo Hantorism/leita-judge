@@ -12,7 +12,7 @@ FROM jdk as run
 RUN apk update && apk add bash && \
     cd /usr/lib && \
     wget -q https://github.com/JetBrains/kotlin/releases/download/v2.1.10/kotlin-compiler-2.1.10.zip && \
-    unzip kotlin-compiler* && \
+    unzip -q kotlin-compiler* && \
     rm kotlin-compiler* && \
     rm -f kotlinc/bin/*.bat && \
     export PATH=$PATH:/usr/lib/kotlinc/bin
