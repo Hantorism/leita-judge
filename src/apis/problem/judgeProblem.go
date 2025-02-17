@@ -15,15 +15,31 @@ import (
 )
 
 type JudgeRequest struct {
+	SubmitId string `json:"submitId"`
 	Language string `json:"language"`
 	Code     string `json:"code"`
 }
 
+type JudgeResponse struct {
+	IsSuccessful bool   `json:"isSuccessful"`
+	Error        string `json:"error"`
+}
+
+// JudgeProblem godoc
+//
+//	@Accept		json
+//	@Produce	json
+//	@Param		ProblemId	path		string			true	"ProblemId"
+//	@Param		RequestBody	body		JudgeRequest	true	"RequestBody"
+//	@Success	200			{object}	JudgeResponse
+//	@Failure	500			{object}	JudgeResponse
+//	@Router		/problem/{problemId} [post]
 func JudgeProblem(c *fiber.Ctx) error {
 	var req JudgeRequest
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid request body",
+		return c.Status(fiber.StatusBadRequest).JSON(JudgeResponse{
+			IsSuccessful: false,
+			Error:        "Invalid request body",
 		})
 	}
 
@@ -39,9 +55,9 @@ func JudgeProblem(c *fiber.Ctx) error {
 	fmt.Println(string(code))
 
 	if err := buildSource(language, code, command.RequireBuild, command.BuildCmd); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"isSuccessful": false,
-			"error":        err.Error(),
+		return c.Status(fiber.StatusInternalServerError).JSON(JudgeResponse{
+			IsSuccessful: false,
+			Error:        err.Error(),
 		})
 	}
 
@@ -49,20 +65,20 @@ func JudgeProblem(c *fiber.Ctx) error {
 
 	results, err := judge(command.RunCmd, problemId, testcases)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"isSuccessful": false,
-			"error":        err.Error(),
+		return c.Status(fiber.StatusInternalServerError).JSON(JudgeResponse{
+			IsSuccessful: false,
+			Error:        err.Error(),
 		})
 	}
 
 	if judgeResult := report(results); judgeResult != JudgePass {
-		return c.Status(fiber.StatusOK).JSON(fiber.Map{
-			"isSuccessful": false,
+		return c.Status(fiber.StatusOK).JSON(JudgeResponse{
+			IsSuccessful: false,
 		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"isSuccessful": true,
+	return c.Status(fiber.StatusOK).JSON(JudgeResponse{
+		IsSuccessful: true,
 	})
 }
 

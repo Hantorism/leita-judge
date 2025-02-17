@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/gofiber/contrib/swagger"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -11,23 +12,24 @@ import (
 	. "leita/src/utils"
 )
 
+// @title			Leita API
+// @version		1.0.0
+// @description	Leita API Docs
 func main() {
 	initialize()
 
-	//app := fiber.New(fiber.Config{
-	//	ErrorHandler: func(ctx fiber.Ctx, err error) error {
-	//		if errors.Is(err, fiber.ErrNotFound) {
-	//			return ctx.Status(fiber.StatusNotFound).SendString(err.Error())
-	//		}
-	//		return ctx.Status(fiber.StatusInternalServerError).SendString(err.Error())
-	//	},
-	//})
 	app := fiber.New()
 
 	app.Use(recover.New())
 	app.Use(logger.New())
 	app.Use(cors.New())
 	app.Use(healthcheck.New())
+	app.Use(swagger.New(swagger.Config{
+		BasePath: "/",
+		FilePath: "./docs/swagger.yaml",
+		Path:     "/api/swagger",
+		Title:    "Leita API Docs",
+	}))
 
 	RegisterRoutes(app)
 
