@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strconv"
 
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	. "leita/src/commands"
 	. "leita/src/function"
 	. "leita/src/models"
@@ -19,9 +19,9 @@ type JudgeRequest struct {
 	Code     string `json:"code"`
 }
 
-func JudgeProblem(c fiber.Ctx) error {
+func JudgeProblem(c *fiber.Ctx) error {
 	var req JudgeRequest
-	if err := c.Bind().Body(&req); err != nil {
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request body",
 		})
