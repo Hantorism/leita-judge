@@ -1,0 +1,51 @@
+definitions:
+  problem.JudgeRequest:
+    properties:
+      code:
+        type: string
+      language:
+        type: string
+      submitId:
+        type: string
+    type: object
+  problem.JudgeResponse:
+    properties:
+      error:
+        type: string
+      isSuccessful:
+        type: boolean
+    type: object
+info:
+  contact: {}
+  description: Leita API Docs
+  title: Leita API
+  version: 1.0.0
+paths:
+  /problem/{problemId}:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: ProblemId
+        in: path
+        name: ProblemId
+        required: true
+        type: string
+      - description: RequestBody
+        in: body
+        name: RequestBody
+        required: true
+        schema:
+          $ref: '#/definitions/problem.JudgeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/problem.JudgeResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/problem.JudgeResponse'
+swagger: "2.0"
