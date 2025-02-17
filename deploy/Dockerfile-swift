@@ -4,7 +4,8 @@ FROM index.docker.io/library/swift:6.0.3 AS swift
 FROM golang AS build
 WORKDIR /workspace
 COPY go.mod go.sum ./
-RUN go mod download -x
+RUN go mod download -x && \
+    swag init
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o server .
 
@@ -12,6 +13,6 @@ FROM swift AS run
 WORKDIR /workspace
 COPY problem ./problem
 COPY --from=build /workspace/server .
-COPY docs ./docs
+COPY --from=build /workspace/docs ./docs
 CMD ./server
 EXPOSE 1323
