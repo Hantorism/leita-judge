@@ -4,7 +4,8 @@ FROM index.docker.io/library/eclipse-temurin:21.0.6_7-jdk-alpine-3.21 AS jdk
 FROM golang AS build
 WORKDIR /workspace
 COPY go.mod go.sum ./
-RUN go mod download -x
+RUN go mod download -x && \
+    swag init
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o server .
 
@@ -12,6 +13,6 @@ FROM jdk AS run
 WORKDIR /workspace
 COPY problem ./problem
 COPY --from=build /workspace/server .
-COPY docs ./docs
+COPY --from=build /workspace/docs ./docs
 CMD ./server
 EXPOSE 1323
