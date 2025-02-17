@@ -3,11 +3,11 @@ FROM docker.io/library/swift:6.0.3 AS swift
 
 FROM golang AS build
 WORKDIR /workspace
-COPY main.go go.mod go.sum ./
-RUN go mod download -x && \
-    go install github.com/swaggo/swag/cmd/swag@v1.16.4 && \
-    swag init
+COPY go.mod go.sum ./
+RUN go mod download -x
 COPY . .
+RUN go install github.com/swaggo/swag/cmd/swag@v1.16.4 && \
+    swag init
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o server .
 
 FROM swift AS run
