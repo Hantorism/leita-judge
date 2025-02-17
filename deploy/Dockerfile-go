@@ -4,6 +4,7 @@ FROM golang AS build
 WORKDIR /workspace
 COPY go.mod go.sum ./
 RUN go mod download -x && \
+    go install github.com/swaggo/swag/cmd/swag@v1.16.4 && \
     swag init
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o server .
