@@ -29,8 +29,8 @@ type JudgeResponse struct {
 //
 //	@Accept		json
 //	@Produce	json
-//	@Param		ProblemId	path		string			true	"ProblemId"
-//	@Param		RequestBody	body		JudgeRequest	true	"RequestBody"
+//	@Param		problemId	path		string			true	"problemId"
+//	@Param		requestBody	body		JudgeRequest	true	"requestBody"
 //	@Success	200			{object}	JudgeResponse
 //	@Failure	500			{object}	JudgeResponse
 //	@Router		/problem/{problemId} [post]
