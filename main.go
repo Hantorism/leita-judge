@@ -12,9 +12,8 @@ import (
 	. "leita/src/utils"
 )
 
-// @title			Leita API
-// @version		1.0.0
-// @description	Leita API Docs
+// @title		Leita API Docs
+// @BasePath	/api
 func main() {
 	initialize()
 
@@ -25,10 +24,8 @@ func main() {
 	app.Use(cors.New())
 	app.Use(healthcheck.New())
 	app.Use(swagger.New(swagger.Config{
-		BasePath: "/",
-		FilePath: "./docs/swagger.yaml",
+		FilePath: "./docs/swagger.json",
 		Path:     "/api/swagger",
-		Title:    "Leita API Docs",
 	}))
 
 	RegisterRoutes(app)

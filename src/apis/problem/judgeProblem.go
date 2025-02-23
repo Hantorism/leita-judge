@@ -9,7 +9,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	. "leita/src/commands"
-	. "leita/src/function"
+	. "leita/src/functions"
 	. "leita/src/models"
 	. "leita/src/utils"
 )
@@ -29,6 +29,7 @@ type JudgeResponse struct {
 //
 //	@Accept		json
 //	@Produce	json
+//	@Tags		Problem
 //	@Param		problemId	path		string			true	"problemId"
 //	@Param		requestBody	body		JudgeRequest	true	"requestBody"
 //	@Success	200			{object}	JudgeResponse
