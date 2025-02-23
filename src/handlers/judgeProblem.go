@@ -1,4 +1,4 @@
-package problem
+package handlers
 
 import (
 	"bytes"
@@ -11,6 +11,7 @@ import (
 	. "leita/src/commands"
 	. "leita/src/functions"
 	. "leita/src/models"
+	"leita/src/services"
 	. "leita/src/utils"
 )
 
@@ -35,52 +36,54 @@ type JudgeResponse struct {
 //	@Success	200			{object}	JudgeResponse
 //	@Failure	500			{object}	JudgeResponse
 //	@Router		/problem/{problemId} [post]
-func JudgeProblem(c *fiber.Ctx) error {
-	var req JudgeRequest
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(JudgeResponse{
-			IsSuccessful: false,
-			Error:        "Invalid request body",
-		})
-	}
+func JudgeProblem(s services.ProblemService) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		var req JudgeRequest
+		if err := c.BodyParser(&req); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(JudgeResponse{
+				IsSuccessful: false,
+				Error:        "Invalid request body",
+			})
+		}
 
-	problemId := c.Params("problemId")
-	language := req.Language
-	code := Decode(req.Code)
-	testcases := 2
-	command := Commands[language]
+		problemId := c.Params("problemId")
+		language := req.Language
+		code := Decode(req.Code)
+		testcases := 2
+		command := Commands[language]
 
-	fmt.Println("언어:", language)
-	fmt.Println("문제 번호:", problemId)
-	fmt.Println("제출 코드:")
-	fmt.Println(string(code))
+		fmt.Println("언어:", language)
+		fmt.Println("문제 번호:", problemId)
+		fmt.Println("제출 코드:")
+		fmt.Println(string(code))
 
-	if err := buildSource(language, code, command.RequireBuild, command.BuildCmd); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(JudgeResponse{
-			IsSuccessful: false,
-			Error:        err.Error(),
-		})
-	}
+		if err := buildSource(language, code, command.RequireBuild, command.BuildCmd); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(JudgeResponse{
+				IsSuccessful: false,
+				Error:        err.Error(),
+			})
+		}
 
-	defer deleteProgram(language, command.RequireBuild, command.DeleteCmd)
+		defer deleteProgram(language, command.RequireBuild, command.DeleteCmd)
 
-	results, err := judge(command.RunCmd, problemId, testcases)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(JudgeResponse{
-			IsSuccessful: false,
-			Error:        err.Error(),
-		})
-	}
+		results, err := judge(command.RunCmd, problemId, testcases)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(JudgeResponse{
+				IsSuccessful: false,
+				Error:        err.Error(),
+			})
+		}
 
-	if judgeResult := report(results); judgeResult != JudgePass {
+		if judgeResult := report(results); judgeResult != JudgePass {
+			return c.Status(fiber.StatusOK).JSON(JudgeResponse{
+				IsSuccessful: false,
+			})
+		}
+
 		return c.Status(fiber.StatusOK).JSON(JudgeResponse{
-			IsSuccessful: false,
+			IsSuccessful: true,
 		})
 	}
-
-	return c.Status(fiber.StatusOK).JSON(JudgeResponse{
-		IsSuccessful: true,
-	})
 }
 
 func buildSource(language string, code []byte, requireBuild bool, buildCmd []string) error {
