@@ -5,6 +5,7 @@ go 1.23.4
 require (
 	github.com/gofiber/contrib/swagger v1.2.0
 	github.com/gofiber/fiber/v2 v2.52.6
+	github.com/joho/godotenv v1.5.1
 	github.com/swaggo/swag v1.16.4
 )
 

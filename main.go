@@ -34,5 +34,7 @@ func main() {
 }
 
 func initialize() {
+	LoadEnv()
+
 	MakeDir()
 }
