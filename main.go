@@ -38,7 +38,5 @@ func main() {
 func initialize() error {
 	LoadEnv()
 
-	MakeDir()
-
 	return nil
 }
