@@ -3,11 +3,11 @@ FROM docker.io/library/eclipse-temurin:21.0.6_7-jdk-alpine-3.21 AS jdk
 
 FROM golang AS build
 WORKDIR /workspace
+RUN go install github.com/swaggo/swag/cmd/swag@v1.16.4
 COPY go.mod go.sum ./
 RUN go mod download -x
 COPY . .
-RUN go install github.com/swaggo/swag/cmd/swag@v1.16.4 && \
-    swag init
+RUN swag init
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o server .
 
 FROM jdk AS run

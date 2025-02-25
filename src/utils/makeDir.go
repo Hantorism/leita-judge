@@ -5,8 +5,8 @@ import (
 	"os"
 )
 
-func MakeDir() {
-	if err := os.MkdirAll("submit", os.ModePerm); err != nil {
+func MakeDir(path string) {
+	if err := os.MkdirAll(path, os.ModePerm); err != nil {
 		fmt.Printf("디렉토리 생성 실패: %v\n", err)
 		return
 	}

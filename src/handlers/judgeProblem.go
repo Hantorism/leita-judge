@@ -63,6 +63,8 @@ func JudgeProblem(s ProblemService) fiber.Handler {
 		fmt.Println("제출 코드:")
 		fmt.Println(string(code))
 
+		MakeDir("submit/" + submitId + "/")
+
 		if err := buildSource(submitId, language, code, requireBuild, buildCmd); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(JudgeResponse{
 				IsSuccessful: false,
