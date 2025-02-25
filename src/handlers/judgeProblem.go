@@ -11,12 +11,12 @@ import (
 	. "leita/src/commands"
 	. "leita/src/functions"
 	. "leita/src/models"
-	"leita/src/services"
+	. "leita/src/services"
 	. "leita/src/utils"
 )
 
 type JudgeRequest struct {
-	SubmitId string `json:"submitId"`
+	SubmitId int    `json:"submitId"`
 	Language string `json:"language"`
 	Code     string `json:"code"`
 }
@@ -36,7 +36,7 @@ type JudgeResponse struct {
 //	@Success	200			{object}	JudgeResponse
 //	@Failure	500			{object}	JudgeResponse
 //	@Router		/problem/{problemId} [post]
-func JudgeProblem(s services.ProblemService) fiber.Handler {
+func JudgeProblem(s ProblemService) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req JudgeRequest
 		if err := c.BodyParser(&req); err != nil {
@@ -47,26 +47,32 @@ func JudgeProblem(s services.ProblemService) fiber.Handler {
 		}
 
 		problemId := c.Params("problemId")
+		submitId := strconv.Itoa(req.SubmitId)
 		language := req.Language
 		code := Decode(req.Code)
-		testcases := 2
+		testcases := 1
 		command := Commands[language]
+		requireBuild := command.RequireBuild
+		buildCmd := ReplaceSubmitId(command.BuildCmd, submitId)
+		runCmd := ReplaceSubmitId(command.RunCmd, submitId)
+		deleteCmd := ReplaceSubmitId(command.DeleteCmd, submitId)
 
 		fmt.Println("언어:", language)
+		fmt.Println("제출 번호:", submitId)
 		fmt.Println("문제 번호:", problemId)
 		fmt.Println("제출 코드:")
 		fmt.Println(string(code))
 
-		if err := buildSource(language, code, command.RequireBuild, command.BuildCmd); err != nil {
+		if err := buildSource(submitId, language, code, requireBuild, buildCmd); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(JudgeResponse{
 				IsSuccessful: false,
 				Error:        err.Error(),
 			})
 		}
 
-		defer deleteProgram(language, command.RequireBuild, command.DeleteCmd)
+		defer deleteProgram(language, requireBuild, deleteCmd)
 
-		results, err := judge(command.RunCmd, problemId, testcases)
+		results, err := judge(runCmd, problemId, testcases)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(JudgeResponse{
 				IsSuccessful: false,
@@ -86,10 +92,10 @@ func JudgeProblem(s services.ProblemService) fiber.Handler {
 	}
 }
 
-func buildSource(language string, code []byte, requireBuild bool, buildCmd []string) error {
+func buildSource(submitId, language string, code []byte, requireBuild bool, buildCmd []string) error {
 	fmt.Println("-----------------------")
 	fmt.Println("소스 파일 저장 중...")
-	inputFile := "submit/temp/Main." + FileExtension(language)
+	inputFile := "submit/" + submitId + "/Main." + FileExtension(language)
 	if err := os.WriteFile(inputFile, code, 0644); err != nil {
 		return fmt.Errorf("파일 저장 실패: %v\n", err)
 	}
@@ -144,7 +150,7 @@ func judge(runCmd []string, problemId string, testcases int) ([]bool, error) {
 	return results, nil
 }
 
-func report(results []bool) JudgeResult {
+func report(results []bool) JudgeResultEnum {
 	fmt.Println("-----------------------")
 	if len(results) < 1 {
 		fmt.Println(JudgeError.String())

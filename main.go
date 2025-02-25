@@ -15,7 +15,9 @@ import (
 // @title		Leita API Docs
 // @BasePath	/api
 func main() {
-	initialize()
+	if err := initialize(); err != nil {
+		log.Fatal(err.Error())
+	}
 
 	app := fiber.New()
 
@@ -33,8 +35,10 @@ func main() {
 	log.Fatal(app.Listen(":1323"))
 }
 
-func initialize() {
+func initialize() error {
 	LoadEnv()
 
 	MakeDir()
+
+	return nil
 }
