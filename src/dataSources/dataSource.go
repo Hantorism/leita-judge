@@ -28,3 +28,11 @@ func NewDataSources() *DataSources {
 		ObjectStorage: client,
 	}
 }
+
+func (ds *DataSources) GetDatabase() *sql.DB {
+	return ds.Database
+}
+
+func (ds *DataSources) GetObjectStorage() *identity.IdentityClient {
+	return ds.ObjectStorage
+}

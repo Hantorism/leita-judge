@@ -28,7 +28,7 @@ func (repository *problemRepository) SaveJudgeResult(dto SaveJudgeResultDAO) err
 	usedTime := dto.UsedTime
 	userId := strconv.Itoa(dto.UserId)
 
-	db := dataSources.NewDataSources().Database
+	db := dataSources.NewDataSources().GetDatabase()
 	defer db.Close()
 
 	query := "INSERT INTO submits (id, problem_id, result, size_of_code, used_language, used_memory, used_time, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
