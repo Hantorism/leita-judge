@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+
 	"github.com/gofiber/contrib/swagger"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
@@ -32,7 +34,7 @@ func main() {
 
 	RegisterRoutes(app)
 
-	log.Fatal(app.Listen(":1323"))
+	log.Fatal(app.Listen(":" + os.Getenv("PORT")))
 }
 
 func initialize() error {
