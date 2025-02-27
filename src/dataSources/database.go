@@ -7,15 +7,8 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/gofiber/fiber/v2"
 	. "leita/src/functions"
-	. "leita/src/models"
 )
-
-type Database interface {
-	SaveJudgeResult(c *fiber.Ctx, result JudgeResult)
-	Close()
-}
 
 func getDSN() (string, error) {
 	dbConf := struct {
