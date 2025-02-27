@@ -30,8 +30,8 @@ func JudgeProblem() fiber.Handler {
 			})
 		}
 
-		problemId := c.Params("problemId")
-		submitId := strconv.Itoa(req.SubmitId)
+		problemId, _ := strconv.Atoi(c.Params("problemId"))
+		submitId := req.SubmitId
 		language := req.Language
 		code := Decode(req.Code)
 		testcases := 1

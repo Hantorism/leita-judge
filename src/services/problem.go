@@ -42,11 +42,9 @@ func (service *problemService) JudgeProblem(dto JudgeProblemDTO) JudgeProblemRes
 	fmt.Println("제출 코드:")
 	fmt.Println(string(code))
 
-	MakeDir("submit/" + submitId + "/")
+	MakeDir("submit/" + strconv.Itoa(submitId) + "/")
 
 	defer func() {
-		submitId, _ := strconv.Atoi(submitId)
-		problemId, _ := strconv.Atoi(problemId)
 		saveJudgeResultDAO := SaveJudgeResultDAO{
 			SubmitId:     submitId,
 			ProblemId:    problemId,
@@ -98,10 +96,10 @@ func (service *problemService) JudgeProblem(dto JudgeProblemDTO) JudgeProblemRes
 	}
 }
 
-func buildSource(submitId, language string, code []byte, requireBuild bool, buildCmd []string) error {
+func buildSource(submitId int, language string, code []byte, requireBuild bool, buildCmd []string) error {
 	fmt.Println("-----------------------")
 	fmt.Println("소스 파일 저장 중...")
-	inputFile := "submit/" + submitId + "/Main." + FileExtension(language)
+	inputFile := "submit/" + strconv.Itoa(submitId) + "/Main." + FileExtension(language)
 	if err := os.WriteFile(inputFile, code, 0644); err != nil {
 		return fmt.Errorf("파일 저장 실패: %v\n", err)
 	}
@@ -125,14 +123,14 @@ func buildSource(submitId, language string, code []byte, requireBuild bool, buil
 	return nil
 }
 
-func judge(runCmd []string, problemId string, testcases int) ([]bool, error) {
+func judge(runCmd []string, problemId, testcases int) ([]bool, error) {
 	results := make([]bool, 0, testcases)
 
 	for i := 0; i < testcases; i++ {
 		fmt.Println("-----------------------")
 		fmt.Printf("%d번째 테스트케이스 실행\n", i+1)
 
-		inputFile := "problem/" + problemId + "/in/" + strconv.Itoa(i) + ".in"
+		inputFile := "problem/" + strconv.Itoa(problemId) + "/in/" + strconv.Itoa(i) + ".in"
 		inputContents, err := os.ReadFile(inputFile)
 		if err != nil {
 			return nil, fmt.Errorf("입력 파일 읽기 실패: %v\n", err)
@@ -143,7 +141,7 @@ func judge(runCmd []string, problemId string, testcases int) ([]bool, error) {
 			return nil, fmt.Errorf("프로그램 실행 실패: %v\n", err)
 		}
 
-		outputFile := "problem/" + problemId + "/out/" + strconv.Itoa(i) + ".out"
+		outputFile := "problem/" + strconv.Itoa(problemId) + "/out/" + strconv.Itoa(i) + ".out"
 		outputContents, err := os.ReadFile(outputFile)
 		if err != nil {
 			return nil, fmt.Errorf(".out 파일 읽기 실패: %v\n", err)

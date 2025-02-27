@@ -12,8 +12,8 @@ type JudgeProblemResponse struct {
 }
 
 type JudgeProblemDTO struct {
-	ProblemId    string
-	SubmitId     string
+	ProblemId    int
+	SubmitId     int
 	Language     string
 	Code         []byte
 	Testcases    int
