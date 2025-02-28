@@ -18,14 +18,14 @@ func NewDataSources() *DataSources {
 		log.Fatal(err)
 	}
 
-	client, err := NewObjectStorage()
-	if err != nil {
-		log.Fatal(err)
-	}
+	//client, err := NewObjectStorage()
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
 
 	return &DataSources{
 		Database:      db,
-		ObjectStorage: client,
+		//ObjectStorage: client,
 	}
 }
 
