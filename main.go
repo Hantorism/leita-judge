@@ -34,7 +34,7 @@ func main() {
 
 	RegisterRoutes(app)
 
-	log.Fatal(app.Listen(":" + os.Getenv("PORT")))
+	log.Fatal(app.Listen(":" + os.Getenv("JUDGE_PORT")))
 }
 
 func initialize() error {
