@@ -24,14 +24,10 @@ type JudgeProblemDTO struct {
 }
 
 type SaveJudgeResultDAO struct {
-	SubmitId     int
-	ProblemId    int
-	Result       string
-	SizeOfCode   int
-	UsedLanguage string
-	UsedMemory   int
-	UsedTime     int
-	UserId       int
+	SubmitId   int
+	Result     string
+	UsedMemory int
+	UsedTime   int
 }
 
 type JudgeProblemResult struct {

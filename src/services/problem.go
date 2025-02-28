@@ -46,14 +46,10 @@ func (service *problemService) JudgeProblem(dto JudgeProblemDTO) JudgeProblemRes
 
 	defer func() {
 		saveJudgeResultDAO := SaveJudgeResultDAO{
-			SubmitId:     submitId,
-			ProblemId:    problemId,
 			Result:       "CORRECT",
-			SizeOfCode:   len(string(code)),
-			UserId:       3,
-			UsedLanguage: language,
 			UsedMemory:   1,
 			UsedTime:     1,
+			SubmitId:     submitId,
 		}
 
 		problemRepository := repositories.NewProblemRepository()

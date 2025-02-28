@@ -2,7 +2,6 @@ package repositories
 
 import (
 	"fmt"
-	"strconv"
 
 	"leita/src/dataSources"
 	. "leita/src/entities"
@@ -19,21 +18,17 @@ func NewProblemRepository() ProblemRepository {
 }
 
 func (repository *problemRepository) SaveJudgeResult(dto SaveJudgeResultDAO) error {
-	submitId := strconv.Itoa(dto.SubmitId)
-	problemId := strconv.Itoa(dto.ProblemId)
 	result := dto.Result
-	sizeOfCode := dto.SizeOfCode
-	usedLanguage := dto.UsedLanguage
 	usedMemory := dto.UsedMemory
 	usedTime := dto.UsedTime
-	userId := strconv.Itoa(dto.UserId)
+	submitId := dto.SubmitId
 
 	db := dataSources.NewDataSources().GetDatabase()
 	defer db.Close()
 
-	query := "INSERT INTO submits (id, problem_id, result, size_of_code, used_language, used_memory, used_time, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+	query := "UPDATE submits SET result = ?, used_memory = ?, used_time = ? WHERE id = ?;"
 
-	if _, err := db.Exec(query, submitId, problemId, result, sizeOfCode, usedLanguage, usedMemory, usedTime, userId); err != nil {
+	if _, err := db.Exec(query, result, usedMemory, usedTime, submitId); err != nil {
 		fmt.Println(err)
 	}
 	return nil
