@@ -15,7 +15,7 @@ import (
 )
 
 type ProblemService interface {
-	JudgeProblem(dto JudgeProblemDTO) JudgeProblemResult
+	SubmitProblem(dto SubmitProblemDTO) SubmitProblemResult
 }
 
 type problemService struct{}
@@ -24,7 +24,7 @@ func NewProblemService() ProblemService {
 	return &problemService{}
 }
 
-func (service *problemService) JudgeProblem(dto JudgeProblemDTO) JudgeProblemResult {
+func (service *problemService) SubmitProblem(dto SubmitProblemDTO) SubmitProblemResult {
 	problemId := dto.ProblemId
 	submitId := dto.SubmitId
 	language := dto.Language
@@ -45,7 +45,7 @@ func (service *problemService) JudgeProblem(dto JudgeProblemDTO) JudgeProblemRes
 	MakeDir("submit/" + strconv.Itoa(submitId) + "/")
 
 	defer func() {
-		saveJudgeResultDAO := SaveJudgeResultDAO{
+		saveSubmitResultDAO := SaveSubmitResultDAO{
 			Result:       "CORRECT",
 			UsedMemory:   1,
 			UsedTime:     1,
@@ -53,13 +53,13 @@ func (service *problemService) JudgeProblem(dto JudgeProblemDTO) JudgeProblemRes
 		}
 
 		problemRepository := repositories.NewProblemRepository()
-		if err := problemRepository.SaveJudgeResult(saveJudgeResultDAO); err != nil {
+		if err := problemRepository.SaveSubmitResult(saveSubmitResultDAO); err != nil {
 			fmt.Println(err)
 		}
 	}()
 
 	if err := buildSource(submitId, language, code, requireBuild, buildCmd); err != nil {
-		return JudgeProblemResult{
+		return SubmitProblemResult{
 			Status:       fiber.StatusInternalServerError,
 			IsSuccessful: false,
 			Error:        err,
@@ -70,7 +70,7 @@ func (service *problemService) JudgeProblem(dto JudgeProblemDTO) JudgeProblemRes
 
 	results, err := judge(runCmd, problemId, testcases)
 	if err != nil {
-		return JudgeProblemResult{
+		return SubmitProblemResult{
 			Status:       fiber.StatusInternalServerError,
 			IsSuccessful: false,
 			Error:        err,
@@ -78,14 +78,14 @@ func (service *problemService) JudgeProblem(dto JudgeProblemDTO) JudgeProblemRes
 	}
 
 	if judgeResult := report(results); judgeResult != JudgePass {
-		return JudgeProblemResult{
+		return SubmitProblemResult{
 			Status:       fiber.StatusOK,
 			IsSuccessful: false,
 			Error:        nil,
 		}
 	}
 
-	return JudgeProblemResult{
+	return SubmitProblemResult{
 		Status:       fiber.StatusOK,
 		IsSuccessful: true,
 		Error:        nil,

@@ -1,17 +1,17 @@
 package entities
 
-type JudgeProblemRequest struct {
+type SubmitProblemRequest struct {
 	SubmitId int    `json:"submitId"`
 	Language string `json:"language"`
 	Code     string `json:"code"`
 }
 
-type JudgeProblemResponse struct {
+type SubmitProblemResponse struct {
 	IsSuccessful bool   `json:"isSuccessful"`
 	Error        string `json:"error"`
 }
 
-type JudgeProblemDTO struct {
+type SubmitProblemDTO struct {
 	ProblemId    int
 	SubmitId     int
 	Language     string
@@ -23,14 +23,14 @@ type JudgeProblemDTO struct {
 	DeleteCmd    []string
 }
 
-type SaveJudgeResultDAO struct {
+type SaveSubmitResultDAO struct {
 	SubmitId   int
 	Result     string
 	UsedMemory int
 	UsedTime   int
 }
 
-type JudgeProblemResult struct {
+type SubmitProblemResult struct {
 	Status       int
 	IsSuccessful bool
 	Error        error

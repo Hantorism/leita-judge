@@ -7,5 +7,5 @@ import (
 
 func RegisterProblemRoutes(api fiber.Router) {
 	problemGroup := api.Group("/problem")
-	problemGroup.Post("/:problemId", handlers.JudgeProblem())
+	problemGroup.Post("/submit/:problemId", handlers.SubmitProblem())
 }

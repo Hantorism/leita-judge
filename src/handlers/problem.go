@@ -10,23 +10,23 @@ import (
 	. "leita/src/utils"
 )
 
-// JudgeProblem godoc
+// SubmitProblem godoc
 //
 //	@Accept		json
 //	@Produce	json
 //	@Tags		Problem
 //	@Param		problemId	path		string				true	"problemId"
-//	@Param		requestBody	body		JudgeProblemRequest	true	"requestBody"
-//	@Success	200			{object}	JudgeProblemResponse
-//	@Failure	500			{object}	JudgeProblemResponse
+//	@Param		requestBody	body		SubmitProblemRequest	true	"requestBody"
+//	@Success	200			{object}	SubmitProblemResponse
+//	@Failure	500			{object}	SubmitProblemResponse
 //	@Router		/problem/{problemId} [post]
-func JudgeProblem() fiber.Handler {
+func SubmitProblem() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		var req JudgeProblemRequest
+		var req SubmitProblemRequest
 		if err := c.BodyParser(&req); err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(JudgeProblemResponse{
+			return c.Status(fiber.StatusBadRequest).JSON(SubmitProblemResponse{
 				IsSuccessful: false,
-				Error:        "Invalid request body",
+				Error:        err.Error(),
 			})
 		}
 
@@ -41,7 +41,7 @@ func JudgeProblem() fiber.Handler {
 		runCmd := ReplaceSubmitId(command.RunCmd, submitId)
 		deleteCmd := ReplaceSubmitId(command.DeleteCmd, submitId)
 
-		judgeProblemDTO := JudgeProblemDTO{
+		submitProblemDTO := SubmitProblemDTO{
 			ProblemId:    problemId,
 			SubmitId:     submitId,
 			Language:     language,
@@ -54,17 +54,17 @@ func JudgeProblem() fiber.Handler {
 		}
 
 		problemService := services.NewProblemService()
-		judgeProblemResult := problemService.JudgeProblem(judgeProblemDTO)
+		submitProblemResult := problemService.SubmitProblem(submitProblemDTO)
 
-		if judgeProblemResult.Error != nil {
-			return c.Status(judgeProblemResult.Status).JSON(JudgeProblemResponse{
-				IsSuccessful: judgeProblemResult.IsSuccessful,
-				Error:        judgeProblemResult.Error.Error(),
+		if submitProblemResult.Error != nil {
+			return c.Status(submitProblemResult.Status).JSON(SubmitProblemResponse{
+				IsSuccessful: submitProblemResult.IsSuccessful,
+				Error:        submitProblemResult.Error.Error(),
 			})
 		}
 
-		return c.Status(judgeProblemResult.Status).JSON(JudgeProblemResponse{
-			IsSuccessful: judgeProblemResult.IsSuccessful,
+		return c.Status(submitProblemResult.Status).JSON(SubmitProblemResponse{
+			IsSuccessful: submitProblemResult.IsSuccessful,
 			Error:        "",
 		})
 	}

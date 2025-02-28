@@ -8,7 +8,7 @@ import (
 )
 
 type ProblemRepository interface {
-	SaveJudgeResult(dto SaveJudgeResultDAO) error
+	SaveSubmitResult(dto SaveSubmitResultDAO) error
 }
 
 type problemRepository struct{}
@@ -17,7 +17,7 @@ func NewProblemRepository() ProblemRepository {
 	return &problemRepository{}
 }
 
-func (repository *problemRepository) SaveJudgeResult(dto SaveJudgeResultDAO) error {
+func (repository *problemRepository) SaveSubmitResult(dto SaveSubmitResultDAO) error {
 	result := dto.Result
 	usedMemory := dto.UsedMemory
 	usedTime := dto.UsedTime
