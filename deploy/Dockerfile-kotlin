@@ -20,6 +20,7 @@ RUN apk update && apk add bash && \
     export PATH=$PATH:/usr/lib/kotlinc/bin
 
 WORKDIR /workspace
+COPY .env .
 COPY problem ./problem
 COPY --from=build /workspace/server .
 COPY --from=build /workspace/docs ./docs
