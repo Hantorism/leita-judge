@@ -17,10 +17,11 @@ type dataSource struct {
 	ObjectStorage *identity.IdentityClient
 }
 
-func NewDataSources() DataSource {
+func NewDataSource() (DataSource, error) {
 	db, err := NewDatabase()
 	if err != nil {
 		log.Fatal(err)
+		return nil, err
 	}
 
 	//client, err := NewObjectStorage()
@@ -31,7 +32,7 @@ func NewDataSources() DataSource {
 	return &dataSource{
 		Database:      db,
 		//ObjectStorage: client,
-	}
+	}, nil
 }
 
 func (ds *dataSource) GetDatabase() *sql.DB {

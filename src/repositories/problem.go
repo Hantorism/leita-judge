@@ -1,8 +1,7 @@
 package repositories
 
 import (
-	"fmt"
-
+	"github.com/gofiber/fiber/v2/log"
 	"leita/src/dataSources"
 	. "leita/src/entities"
 )
@@ -15,10 +14,16 @@ type problemRepository struct {
 	dataSource dataSources.DataSource
 }
 
-func NewProblemRepository() ProblemRepository {
-	return &problemRepository{
-		dataSource: dataSources.NewDataSources(),
+func NewProblemRepository() (ProblemRepository, error) {
+	dataSource, err := dataSources.NewDataSource()
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
 	}
+
+	return &problemRepository{
+		dataSource: dataSource,
+	}, nil
 }
 
 func (repository *problemRepository) SaveSubmitResult(dto SaveSubmitResultDAO) error {
@@ -33,7 +38,7 @@ func (repository *problemRepository) SaveSubmitResult(dto SaveSubmitResultDAO) e
 	query := "UPDATE submits SET result = ?, used_memory = ?, used_time = ? WHERE id = ?;"
 
 	if _, err := db.Exec(query, result, usedMemory, usedTime, submitId); err != nil {
-		fmt.Println(err)
+		log.Error(err)
 	}
 	return nil
 }

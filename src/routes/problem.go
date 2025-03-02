@@ -2,12 +2,19 @@ package routes
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 	"leita/src/handlers"
 )
 
-func RegisterProblemRoutes(api fiber.Router) {
-	handler := handlers.NewProblemHandler()
+func RegisterProblemRoutes(api fiber.Router) error {
+	handler, err := handlers.NewProblemHandler()
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
 
 	problemGroup := api.Group("/problem")
 	problemGroup.Post("/submit/:problemId", handler.SubmitProblem())
+
+	return nil
 }

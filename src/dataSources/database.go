@@ -7,6 +7,7 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/gofiber/fiber/v2/log"
 	. "leita/src/functions"
 )
 
@@ -25,7 +26,9 @@ func getDSN() (string, error) {
 		Name:     os.Getenv("DB_NAME"),
 	}
 	if !AllString(dbConf.User, dbConf.Password, dbConf.Host, dbConf.Port, dbConf.Name) {
-		return "", fmt.Errorf("Invalid Database configuration")
+		err := fmt.Errorf("invalid database configuration")
+		log.Fatal(err)
+		return "", err
 	}
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=true&loc=Local",
@@ -42,17 +45,20 @@ func getDSN() (string, error) {
 func NewDatabase() (*sql.DB, error) {
 	dsn, err := getDSN()
 	if err != nil {
+		log.Fatal(err)
 		return nil, err
 	}
 
-	var db *sql.DB
-	if db, err = sql.Open("mysql", dsn); err != nil {
-		return nil, fmt.Errorf("Database 연결 실패: %w", err)
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
 	}
 
 	if err = db.Ping(); err != nil {
-		db.Close()
-		return nil, fmt.Errorf("Database 핑 테스트 실패: %w", err)
+		_ = db.Close()
+		log.Fatal(err)
+		return nil, err
 	}
 
 	db.SetMaxIdleConns(10)

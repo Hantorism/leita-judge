@@ -18,7 +18,7 @@ import (
 // @BasePath	/api
 func main() {
 	if err := initialize(); err != nil {
-		log.Fatal(err.Error())
+		log.Fatal(err)
 	}
 
 	app := fiber.New()
@@ -32,13 +32,18 @@ func main() {
 		Path:     "/api/swagger",
 	}))
 
-	RegisterRoutes(app)
+	if err := RegisterRoutes(app); err != nil {
+		log.Fatal(err)
+	}
 
 	log.Fatal(app.Listen(":" + os.Getenv("JUDGE_PORT")))
 }
 
 func initialize() error {
-	LoadEnv()
+	if err := LoadEnv(); err != nil {
+		log.Fatal(err)
+		return err
+	}
 
 	return nil
 }

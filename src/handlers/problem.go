@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 	. "leita/src/commands"
 	. "leita/src/entities"
 	"leita/src/services"
@@ -18,10 +19,16 @@ type problemHandler struct {
 	service services.ProblemService
 }
 
-func NewProblemHandler() ProblemHandler {
-	return &problemHandler{
-		service: services.NewProblemService(),
+func NewProblemHandler() (ProblemHandler, error) {
+	service, err := services.NewProblemService()
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
 	}
+
+	return &problemHandler{
+		service: service,
+	}, nil
 }
 
 // SubmitProblem godoc
@@ -47,7 +54,11 @@ func (handler *problemHandler) SubmitProblem() fiber.Handler {
 		problemId, _ := strconv.Atoi(c.Params("problemId"))
 		submitId := req.SubmitId
 		language := req.Language
-		code := Decode(req.Code)
+		code, err := Decode(req.Code)
+		if err != nil {
+			log.Fatal(err)
+			return err
+		}
 		testcases := 1
 		command := Commands[language]
 		buildCmd := ReplaceSubmitId(command.BuildCmd, submitId)
@@ -65,7 +76,11 @@ func (handler *problemHandler) SubmitProblem() fiber.Handler {
 			DeleteCmd: deleteCmd,
 		}
 
-		submitProblemResult := handler.service.SubmitProblem(submitProblemDTO)
+		submitProblemResult, err := handler.service.SubmitProblem(submitProblemDTO)
+		if err != nil {
+			log.Fatal(err)
+			return err
+		}
 
 		if submitProblemResult.Error != nil {
 			return c.Status(submitProblemResult.Status).JSON(SubmitProblemResponse{
