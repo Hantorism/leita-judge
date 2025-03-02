@@ -30,7 +30,6 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) SubmitProblem
 	language := dto.Language
 	code := dto.Code
 	testcases := dto.Testcases
-	requireBuild := dto.RequireBuild
 	buildCmd := dto.BuildCmd
 	runCmd := dto.RunCmd
 	deleteCmd := dto.DeleteCmd
@@ -46,10 +45,10 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) SubmitProblem
 
 	defer func() {
 		saveSubmitResultDAO := SaveSubmitResultDAO{
-			Result:       "CORRECT",
-			UsedMemory:   1,
-			UsedTime:     1,
-			SubmitId:     submitId,
+			Result:     "CORRECT",
+			UsedMemory: 1,
+			UsedTime:   1,
+			SubmitId:   submitId,
 		}
 
 		problemRepository := repositories.NewProblemRepository()
@@ -58,7 +57,7 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) SubmitProblem
 		}
 	}()
 
-	if err := buildSource(submitId, language, code, requireBuild, buildCmd); err != nil {
+	if err := buildSource(submitId, language, code, buildCmd); err != nil {
 		return SubmitProblemResult{
 			Status:       fiber.StatusInternalServerError,
 			IsSuccessful: false,
@@ -66,7 +65,7 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) SubmitProblem
 		}
 	}
 
-	defer deleteProgram(language, requireBuild, deleteCmd)
+	defer deleteProgram(language, deleteCmd)
 
 	results, err := judge(runCmd, problemId, testcases)
 	if err != nil {
@@ -92,7 +91,7 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) SubmitProblem
 	}
 }
 
-func buildSource(submitId int, language string, code []byte, requireBuild bool, buildCmd []string) error {
+func buildSource(submitId int, language string, code []byte, buildCmd []string) error {
 	fmt.Println("-----------------------")
 	fmt.Println("소스 파일 저장 중...")
 	inputFile := "submit/" + strconv.Itoa(submitId) + "/Main." + FileExtension(language)
@@ -102,7 +101,7 @@ func buildSource(submitId int, language string, code []byte, requireBuild bool, 
 	fmt.Println("저장 완료!")
 
 	fmt.Println("소스 파일 빌드 중...")
-	if !requireBuild {
+	if len(buildCmd) == 0 {
 		fmt.Println(language + " 빌드 생략")
 		return nil
 	}
@@ -206,11 +205,11 @@ func checkDifference(result, outputContents []byte) bool {
 	return true
 }
 
-func deleteProgram(language string, requireBuild bool, deleteCmd []string) {
+func deleteProgram(language string, deleteCmd []string) {
 	fmt.Println("-----------------------")
 	fmt.Println("생성된 실행 파일 삭제 중...")
 
-	if !requireBuild {
+	if len(deleteCmd) == 0 {
 		fmt.Println(language + " 삭제 생략")
 		return
 	}

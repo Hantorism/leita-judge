@@ -12,15 +12,14 @@ type SubmitProblemResponse struct {
 }
 
 type SubmitProblemDTO struct {
-	ProblemId    int
-	SubmitId     int
-	Language     string
-	Code         []byte
-	Testcases    int
-	RequireBuild bool
-	BuildCmd     []string
-	RunCmd       []string
-	DeleteCmd    []string
+	ProblemId int
+	SubmitId  int
+	Language  string
+	Code      []byte
+	Testcases int
+	BuildCmd  []string
+	RunCmd    []string
+	DeleteCmd []string
 }
 
 type SaveSubmitResultDAO struct {

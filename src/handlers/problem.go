@@ -36,21 +36,19 @@ func SubmitProblem() fiber.Handler {
 		code := Decode(req.Code)
 		testcases := 1
 		command := Commands[language]
-		requireBuild := command.RequireBuild
 		buildCmd := ReplaceSubmitId(command.BuildCmd, submitId)
 		runCmd := ReplaceSubmitId(command.RunCmd, submitId)
 		deleteCmd := ReplaceSubmitId(command.DeleteCmd, submitId)
 
 		submitProblemDTO := SubmitProblemDTO{
-			ProblemId:    problemId,
-			SubmitId:     submitId,
-			Language:     language,
-			Code:         code,
-			Testcases:    testcases,
-			RequireBuild: requireBuild,
-			BuildCmd:     buildCmd,
-			RunCmd:       runCmd,
-			DeleteCmd:    deleteCmd,
+			ProblemId: problemId,
+			SubmitId:  submitId,
+			Language:  language,
+			Code:      code,
+			Testcases: testcases,
+			BuildCmd:  buildCmd,
+			RunCmd:    runCmd,
+			DeleteCmd: deleteCmd,
 		}
 
 		problemService := services.NewProblemService()
