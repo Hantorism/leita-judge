@@ -30,7 +30,7 @@ func NewDataSource() (DataSource, error) {
 	//}
 
 	return &dataSource{
-		Database:      db,
+		Database: db,
 		//ObjectStorage: client,
 	}, nil
 }
