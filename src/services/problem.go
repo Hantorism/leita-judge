@@ -44,12 +44,11 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (SubmitProble
 	runCmd := dto.RunCmd
 	deleteCmd := dto.DeleteCmd
 
-	log.Info("언어:", language)
-	log.Info("제출 번호:", submitId)
-	log.Info("문제 번호:", problemId)
-	log.Info("코드 길이:", len(string(code)))
-	log.Info("제출 코드:")
-	log.Info(string(code))
+	log.Info("언어: ", language)
+	log.Info("제출 번호: ", submitId)
+	log.Info("문제 번호: ", problemId)
+	log.Info("코드 길이: ", len(string(code)))
+	log.Info("제출 코드:\n", string(code))
 
 	if err := MakeDir("submit/" + strconv.Itoa(submitId) + "/"); err != nil {
 		log.Fatal(err)
@@ -147,7 +146,7 @@ func judge(runCmd []string, problemId, testcases int) ([]bool, error) {
 
 	for i := 0; i < testcases; i++ {
 		log.Info("-----------------------")
-		log.Info("%d번째 테스트케이스 실행\n", i+1)
+		log.Info(i+1, "번째 테스트케이스 실행")
 
 		inputFile := "problem/" + strconv.Itoa(problemId) + "/in/" + strconv.Itoa(i) + ".in"
 		inputContents, err := os.ReadFile(inputFile)
