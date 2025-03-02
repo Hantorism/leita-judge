@@ -11,10 +11,14 @@ type ProblemRepository interface {
 	SaveSubmitResult(dto SaveSubmitResultDAO) error
 }
 
-type problemRepository struct{}
+type problemRepository struct {
+	dataSource dataSources.DataSource
+}
 
 func NewProblemRepository() ProblemRepository {
-	return &problemRepository{}
+	return &problemRepository{
+		dataSource: dataSources.NewDataSources(),
+	}
 }
 
 func (repository *problemRepository) SaveSubmitResult(dto SaveSubmitResultDAO) error {
@@ -23,7 +27,7 @@ func (repository *problemRepository) SaveSubmitResult(dto SaveSubmitResultDAO) e
 	usedTime := dto.UsedTime
 	submitId := dto.SubmitId
 
-	db := dataSources.NewDataSources().GetDatabase()
+	db := repository.dataSource.GetDatabase()
 	defer db.Close()
 
 	query := "UPDATE submits SET result = ?, used_memory = ?, used_time = ? WHERE id = ?;"

@@ -18,10 +18,14 @@ type ProblemService interface {
 	SubmitProblem(dto SubmitProblemDTO) SubmitProblemResult
 }
 
-type problemService struct{}
+type problemService struct {
+	repository repositories.ProblemRepository
+}
 
 func NewProblemService() ProblemService {
-	return &problemService{}
+	return &problemService{
+		repository: repositories.NewProblemRepository(),
+	}
 }
 
 func (service *problemService) SubmitProblem(dto SubmitProblemDTO) SubmitProblemResult {
@@ -51,8 +55,7 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) SubmitProblem
 			SubmitId:   submitId,
 		}
 
-		problemRepository := repositories.NewProblemRepository()
-		if err := problemRepository.SaveSubmitResult(saveSubmitResultDAO); err != nil {
+		if err := service.repository.SaveSubmitResult(saveSubmitResultDAO); err != nil {
 			fmt.Println(err)
 		}
 	}()

@@ -10,17 +10,31 @@ import (
 	. "leita/src/utils"
 )
 
+type ProblemHandler interface {
+	SubmitProblem() fiber.Handler
+}
+
+type problemHandler struct {
+	service services.ProblemService
+}
+
+func NewProblemHandler() ProblemHandler {
+	return &problemHandler{
+		service: services.NewProblemService(),
+	}
+}
+
 // SubmitProblem godoc
 //
 //	@Accept		json
 //	@Produce	json
 //	@Tags		Problem
-//	@Param		problemId	path		string				true	"problemId"
+//	@Param		problemId	path		string					true	"problemId"
 //	@Param		requestBody	body		SubmitProblemRequest	true	"requestBody"
 //	@Success	200			{object}	SubmitProblemResponse
 //	@Failure	500			{object}	SubmitProblemResponse
 //	@Router		/problem/{problemId} [post]
-func SubmitProblem() fiber.Handler {
+func (handler *problemHandler) SubmitProblem() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req SubmitProblemRequest
 		if err := c.BodyParser(&req); err != nil {
@@ -51,8 +65,7 @@ func SubmitProblem() fiber.Handler {
 			DeleteCmd: deleteCmd,
 		}
 
-		problemService := services.NewProblemService()
-		submitProblemResult := problemService.SubmitProblem(submitProblemDTO)
+		submitProblemResult := handler.service.SubmitProblem(submitProblemDTO)
 
 		if submitProblemResult.Error != nil {
 			return c.Status(submitProblemResult.Status).JSON(SubmitProblemResponse{
