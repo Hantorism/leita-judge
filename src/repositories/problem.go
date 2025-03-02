@@ -33,7 +33,6 @@ func (repository *problemRepository) SaveSubmitResult(dto SaveSubmitResultDAO) e
 	submitId := dto.SubmitId
 
 	db := repository.dataSource.GetDatabase()
-	defer db.Close()
 
 	query := "UPDATE submits SET result = ?, used_memory = ?, used_time = ? WHERE id = ?;"
 
