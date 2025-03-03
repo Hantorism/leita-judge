@@ -416,11 +416,11 @@ func executeProgram(runCmd []string, inputContents []byte) ([]byte, error) {
 
 func checkDifference(result, outputContents []byte) bool {
 	log.Info("예상 결과")
-	log.Info(result)
-	log.Info(string(result))
-	log.Info("실제 결과")
 	log.Info(outputContents)
 	log.Info(string(outputContents))
+	log.Info("실제 결과")
+	log.Info(result)
+	log.Info(string(result))
 
 	log.Info("결과를 비교 중...")
 	if !bytes.Equal(result, outputContents) {
