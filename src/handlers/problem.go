@@ -124,7 +124,7 @@ func (handler *problemHandler) RunProblem() fiber.Handler {
 			return err
 		}
 		testCases := req.TestCases
-		submitId := RandomInt(int(math.Pow10(12)), int(math.Pow10(13)-1))
+		submitId := RandomInt(int(math.Pow10(11)), int(math.Pow10(12)-1))
 		command := Commands[language]
 		buildCmd := ReplaceCommand(command.BuildCmd, "run", submitId)
 		runCmd := ReplaceCommand(command.RunCmd, "run", submitId)
