@@ -7,7 +7,7 @@ import (
 
 func LoadEnv() error {
 	if err := godotenv.Load(".env"); err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return err
 	}
 

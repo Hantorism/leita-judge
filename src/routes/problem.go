@@ -9,12 +9,13 @@ import (
 func RegisterProblemRoutes(api fiber.Router) error {
 	handler, err := handlers.NewProblemHandler()
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return err
 	}
 
 	problemGroup := api.Group("/problem")
 	problemGroup.Post("/submit/:problemId", handler.SubmitProblem())
+	problemGroup.Post("/run/:problemId", handler.RunProblem())
 
 	return nil
 }

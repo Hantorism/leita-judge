@@ -20,13 +20,13 @@ type dataSource struct {
 func NewDataSource() (DataSource, error) {
 	db, err := NewDatabase()
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return nil, err
 	}
 
 	//client, err := NewObjectStorage()
 	//if err != nil {
-	//	log.Fatal(err)
+	//	log.Error(err)
 	//}
 
 	return &dataSource{
