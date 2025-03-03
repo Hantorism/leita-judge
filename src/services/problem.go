@@ -194,7 +194,7 @@ func printRunProblemInfo(language string, submitId int, problemId int, code []by
 	log.Info("제출 코드:\n", string(code))
 	log.Info("테스트 케이스:")
 	for i, testCase := range testCases {
-		log.Info(i, "번째 테스트 케이스")
+		log.Info(i+1, "번째 테스트 케이스")
 
 		input, err := Decode(testCase.Input)
 		if err != nil {
@@ -415,12 +415,8 @@ func executeProgram(runCmd []string, inputContents []byte) ([]byte, error) {
 }
 
 func checkDifference(result, outputContents []byte) bool {
-	log.Info("예상 결과")
-	log.Info(outputContents)
-	log.Info(string(outputContents))
-	log.Info("실제 결과")
-	log.Info(result)
-	log.Info(string(result))
+	log.Info("예상 결과\n", outputContents, "\n", string(outputContents))
+	log.Info("실제 결과\n", result, "\n", string(result))
 
 	log.Info("결과를 비교 중...")
 	if !bytes.Equal(result, outputContents) {
