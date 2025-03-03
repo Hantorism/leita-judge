@@ -84,7 +84,7 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (SubmitProble
 		}
 	}(language, deleteCmd)
 
-	results, err := judge(runCmd, submitId, "submit")
+	judgeResults, err := judge(runCmd, submitId, "submit")
 	if err != nil {
 		log.Fatal(err)
 		return SubmitProblemResult{
@@ -94,7 +94,7 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (SubmitProble
 		}, err
 	}
 
-	if judgeResult := report(results); judgeResult != JudgePass {
+	if judgeResult := report(judgeResults); judgeResult != JudgePass {
 		return SubmitProblemResult{
 			Status:       fiber.StatusOK,
 			IsSuccessful: false,
@@ -153,7 +153,7 @@ func (service *problemService) RunProblem(dto RunProblemDTO) (RunProblemResult, 
 		}
 	}(language, deleteCmd)
 
-	results, err := judge(runCmd, submitId, "run")
+	judgeResults, err := judge(runCmd, submitId, "run")
 	if err != nil {
 		log.Fatal(err)
 		return RunProblemResult{
@@ -163,7 +163,7 @@ func (service *problemService) RunProblem(dto RunProblemDTO) (RunProblemResult, 
 		}, err
 	}
 
-	if judgeResult := report(results); judgeResult != JudgePass {
+	if judgeResult := report(judgeResults); judgeResult != JudgePass {
 		return RunProblemResult{
 			Status:       fiber.StatusOK,
 			IsSuccessful: false,
@@ -338,7 +338,7 @@ func buildSource(submitId int, language, judgeType string, code []byte, buildCmd
 func judge(runCmd []string, submitId int, judgeType string) ([]bool, error) {
 	testCaseNum := 1
 
-	results := make([]bool, 0, testCaseNum)
+	judgeResults := make([]bool, 0, testCaseNum)
 
 	for i := 0; i < testCaseNum; i++ {
 		log.Info("-----------------------")
@@ -351,7 +351,7 @@ func judge(runCmd []string, submitId int, judgeType string) ([]bool, error) {
 			return nil, err
 		}
 
-		output, err := executeProgram(runCmd, inputContents)
+		result, err := executeProgram(runCmd, inputContents)
 		if err != nil {
 			log.Fatal(err)
 			return nil, err
@@ -364,11 +364,11 @@ func judge(runCmd []string, submitId int, judgeType string) ([]bool, error) {
 			return nil, err
 		}
 
-		result := checkDifference(output, outputContents)
-		results = append(results, result)
+		judgeResult := checkDifference(result, outputContents)
+		judgeResults = append(judgeResults, judgeResult)
 	}
 
-	return results, nil
+	return judgeResults, nil
 }
 
 func report(results []bool) JudgeResultEnum {
