@@ -2,5 +2,6 @@
 bin
 docs
 submit
+run
 database
 .env

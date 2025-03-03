@@ -16,6 +16,7 @@ import (
 
 type ProblemService interface {
 	SubmitProblem(dto SubmitProblemDTO) (SubmitProblemResult, error)
+	RunProblem(dto RunProblemDTO) (RunProblemResult, error)
 }
 
 type problemService struct {
@@ -39,18 +40,13 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (SubmitProble
 	submitId := dto.SubmitId
 	language := dto.Language
 	code := dto.Code
-	testcases := dto.Testcases
 	buildCmd := dto.BuildCmd
 	runCmd := dto.RunCmd
 	deleteCmd := dto.DeleteCmd
 
-	log.Info("언어: ", language)
-	log.Info("제출 번호: ", submitId)
-	log.Info("문제 번호: ", problemId)
-	log.Info("코드 길이: ", len(string(code)))
-	log.Info("제출 코드:\n", string(code))
+	printSubmitProblemInfo(language, submitId, problemId, code)
 
-	if err := MakeDir("submit/" + strconv.Itoa(submitId) + "/"); err != nil {
+	if err := copyTestCases(submitId, problemId); err != nil {
 		log.Fatal(err)
 		return SubmitProblemResult{
 			Status:       fiber.StatusInternalServerError,
@@ -72,7 +68,7 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (SubmitProble
 		}
 	}()
 
-	if err := buildSource(submitId, language, code, buildCmd); err != nil {
+	if err := buildSource(submitId, language, "submit", code, buildCmd); err != nil {
 		log.Fatal(err)
 		return SubmitProblemResult{
 			Status:       fiber.StatusInternalServerError,
@@ -88,7 +84,7 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (SubmitProble
 		}
 	}(language, deleteCmd)
 
-	results, err := judge(runCmd, problemId, testcases)
+	results, err := judge(runCmd, submitId, "submit")
 	if err != nil {
 		log.Fatal(err)
 		return SubmitProblemResult{
@@ -113,16 +109,214 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (SubmitProble
 	}, nil
 }
 
-func buildSource(submitId int, language string, code []byte, buildCmd []string) error {
+func (service *problemService) RunProblem(dto RunProblemDTO) (RunProblemResult, error) {
+	problemId := dto.ProblemId
+	submitId := dto.SubmitId
+	language := dto.Language
+	code := dto.Code
+	testCases := dto.TestCases
+	buildCmd := dto.BuildCmd
+	runCmd := dto.RunCmd
+	deleteCmd := dto.DeleteCmd
+
+	if err := printRunProblemInfo(language, submitId, problemId, code, testCases); err != nil {
+		log.Fatal(err)
+		return RunProblemResult{
+			Status:       fiber.StatusInternalServerError,
+			IsSuccessful: false,
+			Error:        err,
+		}, err
+	}
+
+	if err := saveTestCases(submitId, testCases); err != nil {
+		log.Fatal(err)
+		return RunProblemResult{
+			Status:       fiber.StatusInternalServerError,
+			IsSuccessful: false,
+			Error:        err,
+		}, err
+	}
+
+	if err := buildSource(submitId, language, "run", code, buildCmd); err != nil {
+		log.Fatal(err)
+		return RunProblemResult{
+			Status:       fiber.StatusInternalServerError,
+			IsSuccessful: false,
+			Error:        err,
+		}, err
+	}
+
+	defer func(language string, deleteCmd []string) {
+		err := deleteProgram(language, deleteCmd)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(language, deleteCmd)
+
+	results, err := judge(runCmd, submitId, "run")
+	if err != nil {
+		log.Fatal(err)
+		return RunProblemResult{
+			Status:       fiber.StatusInternalServerError,
+			IsSuccessful: false,
+			Error:        err,
+		}, err
+	}
+
+	if judgeResult := report(results); judgeResult != JudgePass {
+		return RunProblemResult{
+			Status:       fiber.StatusOK,
+			IsSuccessful: false,
+			Error:        nil,
+		}, nil
+	}
+
+	return RunProblemResult{
+		Status:       fiber.StatusOK,
+		IsSuccessful: true,
+		Error:        nil,
+	}, nil
+}
+
+func printSubmitProblemInfo(language string, submitId int, problemId int, code []byte) {
+	log.Info("언어: ", language)
+	log.Info("제출 번호: ", submitId)
+	log.Info("문제 번호: ", problemId)
+	log.Info("코드 길이: ", len(string(code)))
+	log.Info("제출 코드:\n", string(code))
+}
+
+func printRunProblemInfo(language string, submitId int, problemId int, code []byte, testCases []TestCase) error {
+	log.Info("언어: ", language)
+	log.Info("제출 번호: ", submitId)
+	log.Info("문제 번호: ", problemId)
+	log.Info("코드 길이: ", len(string(code)))
+	log.Info("제출 코드:\n", string(code))
+	log.Info("테스트 케이스:")
+	for i, testCase := range testCases {
+		log.Info(i, "번째 테스트 케이스")
+
+		input, err := Decode(testCase.Input)
+		if err != nil {
+			log.Fatal(err)
+			return err
+		}
+		log.Info("입력:\n", string(input))
+
+		output, err := Decode(testCase.Output)
+		if err != nil {
+			log.Fatal(err)
+			return err
+		}
+		log.Info("출력:\n", string(output))
+	}
+
+	return nil
+}
+
+func copyTestCases(submitId int, problemId int) error {
 	log.Info("-----------------------")
-	log.Info("소스 파일 저장 중...")
-	inputFile := "submit/" + strconv.Itoa(submitId) + "/Main." + FileExtension(language)
-	if err := os.WriteFile(inputFile, code, 0644); err != nil {
+	log.Info("테스트 케이스 복사 중...")
+
+	if err := MakeDir("submit/" + strconv.Itoa(submitId) + "/in/"); err != nil {
+		log.Fatal(err)
 		return err
 	}
-	log.Info("저장 완료!")
 
-	log.Info("소스 파일 빌드 중...")
+	if err := MakeDir("submit/" + strconv.Itoa(submitId) + "/out/"); err != nil {
+		log.Fatal(err)
+		return err
+	}
+
+	testCaseNum := 1
+
+	for i := 0; i < testCaseNum; i++ {
+		srcInputFilePath := "problem/" + strconv.Itoa(problemId) + "/in/" + strconv.Itoa(i) + ".in"
+		dstInputFilePath := "submit/" + strconv.Itoa(submitId) + "/in/" + strconv.Itoa(i) + ".in"
+		srcOutputFilePath := "problem/" + strconv.Itoa(problemId) + "/out/" + strconv.Itoa(i) + ".out"
+		dstOutputFilePath := "submit/" + strconv.Itoa(submitId) + "/out/" + strconv.Itoa(i) + ".out"
+
+		if err := CopyFile(srcInputFilePath, dstInputFilePath); err != nil {
+			log.Fatal(err)
+			return err
+		}
+
+		if err := CopyFile(srcOutputFilePath, dstOutputFilePath); err != nil {
+			log.Fatal(err)
+			return err
+		}
+	}
+
+	log.Info("테스트 케이스 복사 완료!")
+	return nil
+}
+
+func saveTestCases(submitId int, testCases []TestCase) error {
+	log.Info("-----------------------")
+	log.Info("테스트 케이스 저장 중...")
+
+	if err := MakeDir("run/" + strconv.Itoa(submitId) + "/in/"); err != nil {
+		log.Fatal(err)
+		return err
+	}
+
+	if err := MakeDir("run/" + strconv.Itoa(submitId) + "/out/"); err != nil {
+		log.Fatal(err)
+		return err
+	}
+
+	for i, testCase := range testCases {
+		inputFilePath := "run/" + strconv.Itoa(submitId) + "/in/" + strconv.Itoa(i) + ".in"
+		inputContents, err := Decode(testCase.Input)
+		if err != nil {
+			log.Fatal(err)
+			return err
+		}
+		if err = os.WriteFile(inputFilePath, inputContents, 0644); err != nil {
+			return err
+		}
+
+		outputFilePath := "run/" + strconv.Itoa(submitId) + "/out/" + strconv.Itoa(i) + ".out"
+		outputContents, err := Decode(testCase.Output)
+		if err != nil {
+			log.Fatal(err)
+			return err
+		}
+		if err = os.WriteFile(outputFilePath, outputContents, 0644); err != nil {
+			return err
+		}
+	}
+
+	log.Info("테스트 케이스 저장 완료!")
+	return nil
+}
+
+func saveSourceCode(submitId int, code []byte, language, judgeType string) error {
+	log.Info("-----------------------")
+	log.Info("소스 코드 저장 중...")
+
+	if err := MakeDir(judgeType + "/" + strconv.Itoa(submitId) + "/"); err != nil {
+		log.Fatal(err)
+		return err
+	}
+
+	inputFilePath := judgeType + "/" + strconv.Itoa(submitId) + "/Main." + FileExtension(language)
+	if err := os.WriteFile(inputFilePath, code, 0644); err != nil {
+		return err
+	}
+
+	log.Info("소스 코드 저장 완료!")
+	return nil
+}
+
+func buildSource(submitId int, language, judgeType string, code []byte, buildCmd []string) error {
+	if err := saveSourceCode(submitId, code, language, judgeType); err != nil {
+		log.Fatal(err)
+		return err
+	}
+
+	log.Info("-----------------------")
+	log.Info("소스 코드 빌드 중...")
 	if len(buildCmd) == 0 {
 		log.Info(language + " 빌드 생략")
 		return nil
@@ -137,18 +331,20 @@ func buildSource(submitId int, language string, code []byte, buildCmd []string) 
 		return err
 	}
 
-	log.Info("빌드 완료!")
+	log.Info("소스 코드 빌드 완료!")
 	return nil
 }
 
-func judge(runCmd []string, problemId, testcases int) ([]bool, error) {
-	results := make([]bool, 0, testcases)
+func judge(runCmd []string, submitId int, judgeType string) ([]bool, error) {
+	testCaseNum := 1
 
-	for i := 0; i < testcases; i++ {
+	results := make([]bool, 0, testCaseNum)
+
+	for i := 0; i < testCaseNum; i++ {
 		log.Info("-----------------------")
 		log.Info(i+1, "번째 테스트케이스 실행")
 
-		inputFile := "problem/" + strconv.Itoa(problemId) + "/in/" + strconv.Itoa(i) + ".in"
+		inputFile := judgeType + "/" + strconv.Itoa(submitId) + "/in/" + strconv.Itoa(i) + ".in"
 		inputContents, err := os.ReadFile(inputFile)
 		if err != nil {
 			log.Fatal(err)
@@ -161,7 +357,7 @@ func judge(runCmd []string, problemId, testcases int) ([]bool, error) {
 			return nil, err
 		}
 
-		outputFile := "problem/" + strconv.Itoa(problemId) + "/out/" + strconv.Itoa(i) + ".out"
+		outputFile := judgeType + "/" + strconv.Itoa(submitId) + "/out/" + strconv.Itoa(i) + ".out"
 		outputContents, err := os.ReadFile(outputFile)
 		if err != nil {
 			log.Fatal(err)

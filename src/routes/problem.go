@@ -15,6 +15,7 @@ func RegisterProblemRoutes(api fiber.Router) error {
 
 	problemGroup := api.Group("/problem")
 	problemGroup.Post("/submit/:problemId", handler.SubmitProblem())
+	problemGroup.Post("/run/:problemId", handler.RunProblem())
 
 	return nil
 }
