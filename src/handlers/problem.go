@@ -4,67 +4,93 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 	. "leita/src/commands"
 	. "leita/src/entities"
 	"leita/src/services"
 	. "leita/src/utils"
 )
 
-// JudgeProblem godoc
+type ProblemHandler interface {
+	SubmitProblem() fiber.Handler
+}
+
+type problemHandler struct {
+	service services.ProblemService
+}
+
+func NewProblemHandler() (ProblemHandler, error) {
+	service, err := services.NewProblemService()
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+
+	return &problemHandler{
+		service: service,
+	}, nil
+}
+
+// SubmitProblem godoc
 //
 //	@Accept		json
 //	@Produce	json
 //	@Tags		Problem
-//	@Param		problemId	path		string				true	"problemId"
-//	@Param		requestBody	body		JudgeProblemRequest	true	"requestBody"
-//	@Success	200			{object}	JudgeProblemResponse
-//	@Failure	500			{object}	JudgeProblemResponse
+//	@Param		problemId	path		string					true	"problemId"
+//	@Param		requestBody	body		SubmitProblemRequest	true	"requestBody"
+//	@Success	200			{object}	SubmitProblemResponse
+//	@Failure	500			{object}	SubmitProblemResponse
 //	@Router		/problem/{problemId} [post]
-func JudgeProblem() fiber.Handler {
+func (handler *problemHandler) SubmitProblem() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		var req JudgeProblemRequest
+		var req SubmitProblemRequest
 		if err := c.BodyParser(&req); err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(JudgeProblemResponse{
+			return c.Status(fiber.StatusBadRequest).JSON(SubmitProblemResponse{
 				IsSuccessful: false,
-				Error:        "Invalid request body",
+				Error:        err.Error(),
 			})
 		}
 
 		problemId, _ := strconv.Atoi(c.Params("problemId"))
 		submitId := req.SubmitId
 		language := req.Language
-		code := Decode(req.Code)
+		code, err := Decode(req.Code)
+		if err != nil {
+			log.Fatal(err)
+			return err
+		}
 		testcases := 1
 		command := Commands[language]
-		requireBuild := command.RequireBuild
 		buildCmd := ReplaceSubmitId(command.BuildCmd, submitId)
 		runCmd := ReplaceSubmitId(command.RunCmd, submitId)
 		deleteCmd := ReplaceSubmitId(command.DeleteCmd, submitId)
 
-		judgeProblemDTO := JudgeProblemDTO{
-			ProblemId:    problemId,
-			SubmitId:     submitId,
-			Language:     language,
-			Code:         code,
-			Testcases:    testcases,
-			RequireBuild: requireBuild,
-			BuildCmd:     buildCmd,
-			RunCmd:       runCmd,
-			DeleteCmd:    deleteCmd,
+		submitProblemDTO := SubmitProblemDTO{
+			ProblemId: problemId,
+			SubmitId:  submitId,
+			Language:  language,
+			Code:      code,
+			Testcases: testcases,
+			BuildCmd:  buildCmd,
+			RunCmd:    runCmd,
+			DeleteCmd: deleteCmd,
 		}
 
-		problemService := services.NewProblemService()
-		judgeProblemResult := problemService.JudgeProblem(judgeProblemDTO)
+		submitProblemResult, err := handler.service.SubmitProblem(submitProblemDTO)
+		if err != nil {
+			log.Fatal(err)
+			return err
+		}
 
-		if judgeProblemResult.Error != nil {
-			return c.Status(judgeProblemResult.Status).JSON(JudgeProblemResponse{
-				IsSuccessful: judgeProblemResult.IsSuccessful,
-				Error:        judgeProblemResult.Error.Error(),
+		if submitProblemResult.Error != nil {
+			return c.Status(submitProblemResult.Status).JSON(SubmitProblemResponse{
+				IsSuccessful: submitProblemResult.IsSuccessful,
+				Error:        submitProblemResult.Error.Error(),
 			})
 		}
 
-		return c.Status(judgeProblemResult.Status).JSON(JudgeProblemResponse{
-			IsSuccessful: judgeProblemResult.IsSuccessful,
+		return c.Status(submitProblemResult.Status).JSON(SubmitProblemResponse{
+			IsSuccessful: submitProblemResult.IsSuccessful,
 			Error:        "",
 		})
 	}

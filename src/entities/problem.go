@@ -1,40 +1,35 @@
 package entities
 
-type JudgeProblemRequest struct {
+type SubmitProblemRequest struct {
 	SubmitId int    `json:"submitId"`
 	Language string `json:"language"`
 	Code     string `json:"code"`
 }
 
-type JudgeProblemResponse struct {
+type SubmitProblemResponse struct {
 	IsSuccessful bool   `json:"isSuccessful"`
 	Error        string `json:"error"`
 }
 
-type JudgeProblemDTO struct {
-	ProblemId    int
-	SubmitId     int
-	Language     string
-	Code         []byte
-	Testcases    int
-	RequireBuild bool
-	BuildCmd     []string
-	RunCmd       []string
-	DeleteCmd    []string
+type SubmitProblemDTO struct {
+	ProblemId int
+	SubmitId  int
+	Language  string
+	Code      []byte
+	Testcases int
+	BuildCmd  []string
+	RunCmd    []string
+	DeleteCmd []string
 }
 
-type SaveJudgeResultDAO struct {
-	SubmitId     int
-	ProblemId    int
-	Result       string
-	SizeOfCode   int
-	UsedLanguage string
-	UsedMemory   int
-	UsedTime     int
-	UserId       int
+type SaveSubmitResultDAO struct {
+	SubmitId   int
+	Result     string
+	UsedMemory int
+	UsedTime   int
 }
 
-type JudgeProblemResult struct {
+type SubmitProblemResult struct {
 	Status       int
 	IsSuccessful bool
 	Error        error

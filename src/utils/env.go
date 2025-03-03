@@ -5,8 +5,11 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func LoadEnv() {
+func LoadEnv() error {
 	if err := godotenv.Load(".env"); err != nil {
-		log.Error(err)
+		log.Fatal(err)
+		return err
 	}
+
+	return nil
 }

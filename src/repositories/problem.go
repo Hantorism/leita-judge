@@ -1,40 +1,43 @@
 package repositories
 
 import (
-	"fmt"
-	"strconv"
-
+	"github.com/gofiber/fiber/v2/log"
 	"leita/src/dataSources"
 	. "leita/src/entities"
 )
 
 type ProblemRepository interface {
-	SaveJudgeResult(dto SaveJudgeResultDAO) error
+	SaveSubmitResult(dto SaveSubmitResultDAO) error
 }
 
-type problemRepository struct{}
-
-func NewProblemRepository() ProblemRepository {
-	return &problemRepository{}
+type problemRepository struct {
+	dataSource dataSources.DataSource
 }
 
-func (repository *problemRepository) SaveJudgeResult(dto SaveJudgeResultDAO) error {
-	submitId := strconv.Itoa(dto.SubmitId)
-	problemId := strconv.Itoa(dto.ProblemId)
+func NewProblemRepository() (ProblemRepository, error) {
+	dataSource, err := dataSources.NewDataSource()
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+
+	return &problemRepository{
+		dataSource: dataSource,
+	}, nil
+}
+
+func (repository *problemRepository) SaveSubmitResult(dto SaveSubmitResultDAO) error {
 	result := dto.Result
-	sizeOfCode := dto.SizeOfCode
-	usedLanguage := dto.UsedLanguage
 	usedMemory := dto.UsedMemory
 	usedTime := dto.UsedTime
-	userId := strconv.Itoa(dto.UserId)
+	submitId := dto.SubmitId
 
-	db := dataSources.NewDataSources().GetDatabase()
-	defer db.Close()
+	db := repository.dataSource.GetDatabase()
 
-	query := "INSERT INTO submits (id, problem_id, result, size_of_code, used_language, used_memory, used_time, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+	query := "UPDATE submits SET result = ?, used_memory = ?, used_time = ? WHERE id = ?;"
 
-	if _, err := db.Exec(query, submitId, problemId, result, sizeOfCode, usedLanguage, usedMemory, usedTime, userId); err != nil {
-		fmt.Println(err)
+	if _, err := db.Exec(query, result, usedMemory, usedTime, submitId); err != nil {
+		log.Error(err)
 	}
 	return nil
 }

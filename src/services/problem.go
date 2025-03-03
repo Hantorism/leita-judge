@@ -2,12 +2,12 @@ package services
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 	. "leita/src/entities"
 	. "leita/src/functions"
 	"leita/src/repositories"
@@ -15,99 +15,116 @@ import (
 )
 
 type ProblemService interface {
-	JudgeProblem(dto JudgeProblemDTO) JudgeProblemResult
+	SubmitProblem(dto SubmitProblemDTO) (SubmitProblemResult, error)
 }
 
-type problemService struct{}
-
-func NewProblemService() ProblemService {
-	return &problemService{}
+type problemService struct {
+	repository repositories.ProblemRepository
 }
 
-func (service *problemService) JudgeProblem(dto JudgeProblemDTO) JudgeProblemResult {
+func NewProblemService() (ProblemService, error) {
+	repository, err := repositories.NewProblemRepository()
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+
+	return &problemService{
+		repository: repository,
+	}, nil
+}
+
+func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (SubmitProblemResult, error) {
 	problemId := dto.ProblemId
 	submitId := dto.SubmitId
 	language := dto.Language
 	code := dto.Code
 	testcases := dto.Testcases
-	requireBuild := dto.RequireBuild
 	buildCmd := dto.BuildCmd
 	runCmd := dto.RunCmd
 	deleteCmd := dto.DeleteCmd
 
-	fmt.Println("언어:", language)
-	fmt.Println("제출 번호:", submitId)
-	fmt.Println("문제 번호:", problemId)
-	fmt.Println("코드 길이:", len(string(code)))
-	fmt.Println("제출 코드:")
-	fmt.Println(string(code))
+	log.Info("언어: ", language)
+	log.Info("제출 번호: ", submitId)
+	log.Info("문제 번호: ", problemId)
+	log.Info("코드 길이: ", len(string(code)))
+	log.Info("제출 코드:\n", string(code))
 
-	MakeDir("submit/" + strconv.Itoa(submitId) + "/")
+	if err := MakeDir("submit/" + strconv.Itoa(submitId) + "/"); err != nil {
+		log.Fatal(err)
+		return SubmitProblemResult{
+			Status:       fiber.StatusInternalServerError,
+			IsSuccessful: false,
+			Error:        err,
+		}, err
+	}
 
 	defer func() {
-		saveJudgeResultDAO := SaveJudgeResultDAO{
-			SubmitId:     submitId,
-			ProblemId:    problemId,
-			Result:       "CORRECT",
-			SizeOfCode:   len(string(code)),
-			UserId:       3,
-			UsedLanguage: language,
-			UsedMemory:   1,
-			UsedTime:     1,
+		saveSubmitResultDAO := SaveSubmitResultDAO{
+			Result:     "CORRECT",
+			UsedMemory: 1,
+			UsedTime:   1,
+			SubmitId:   submitId,
 		}
 
-		problemRepository := repositories.NewProblemRepository()
-		if err := problemRepository.SaveJudgeResult(saveJudgeResultDAO); err != nil {
-			fmt.Println(err)
+		if err := service.repository.SaveSubmitResult(saveSubmitResultDAO); err != nil {
+			log.Fatal(err)
 		}
 	}()
 
-	if err := buildSource(submitId, language, code, requireBuild, buildCmd); err != nil {
-		return JudgeProblemResult{
+	if err := buildSource(submitId, language, code, buildCmd); err != nil {
+		log.Fatal(err)
+		return SubmitProblemResult{
 			Status:       fiber.StatusInternalServerError,
 			IsSuccessful: false,
 			Error:        err,
-		}
+		}, err
 	}
 
-	defer deleteProgram(language, requireBuild, deleteCmd)
+	defer func(language string, deleteCmd []string) {
+		err := deleteProgram(language, deleteCmd)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}(language, deleteCmd)
 
 	results, err := judge(runCmd, problemId, testcases)
 	if err != nil {
-		return JudgeProblemResult{
+		log.Fatal(err)
+		return SubmitProblemResult{
 			Status:       fiber.StatusInternalServerError,
 			IsSuccessful: false,
 			Error:        err,
-		}
+		}, err
 	}
 
 	if judgeResult := report(results); judgeResult != JudgePass {
-		return JudgeProblemResult{
+		return SubmitProblemResult{
 			Status:       fiber.StatusOK,
 			IsSuccessful: false,
 			Error:        nil,
-		}
+		}, nil
 	}
 
-	return JudgeProblemResult{
+	return SubmitProblemResult{
 		Status:       fiber.StatusOK,
 		IsSuccessful: true,
 		Error:        nil,
-	}
+	}, nil
 }
 
-func buildSource(submitId int, language string, code []byte, requireBuild bool, buildCmd []string) error {
-	fmt.Println("-----------------------")
-	fmt.Println("소스 파일 저장 중...")
+func buildSource(submitId int, language string, code []byte, buildCmd []string) error {
+	log.Info("-----------------------")
+	log.Info("소스 파일 저장 중...")
 	inputFile := "submit/" + strconv.Itoa(submitId) + "/Main." + FileExtension(language)
 	if err := os.WriteFile(inputFile, code, 0644); err != nil {
-		return fmt.Errorf("파일 저장 실패: %v\n", err)
+		return err
 	}
-	fmt.Println("저장 완료!")
+	log.Info("저장 완료!")
 
-	fmt.Println("소스 파일 빌드 중...")
-	if !requireBuild {
-		fmt.Println(language + " 빌드 생략")
+	log.Info("소스 파일 빌드 중...")
+	if len(buildCmd) == 0 {
+		log.Info(language + " 빌드 생략")
 		return nil
 	}
 
@@ -116,10 +133,11 @@ func buildSource(submitId int, language string, code []byte, requireBuild bool, 
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("소스 파일 빌드 실패: %v\n", err)
+		log.Fatal(err)
+		return err
 	}
 
-	fmt.Println("빌드 완료!")
+	log.Info("빌드 완료!")
 	return nil
 }
 
@@ -127,24 +145,27 @@ func judge(runCmd []string, problemId, testcases int) ([]bool, error) {
 	results := make([]bool, 0, testcases)
 
 	for i := 0; i < testcases; i++ {
-		fmt.Println("-----------------------")
-		fmt.Printf("%d번째 테스트케이스 실행\n", i+1)
+		log.Info("-----------------------")
+		log.Info(i+1, "번째 테스트케이스 실행")
 
 		inputFile := "problem/" + strconv.Itoa(problemId) + "/in/" + strconv.Itoa(i) + ".in"
 		inputContents, err := os.ReadFile(inputFile)
 		if err != nil {
-			return nil, fmt.Errorf("입력 파일 읽기 실패: %v\n", err)
+			log.Fatal(err)
+			return nil, err
 		}
 
 		output, err := executeProgram(runCmd, inputContents)
 		if err != nil {
-			return nil, fmt.Errorf("프로그램 실행 실패: %v\n", err)
+			log.Fatal(err)
+			return nil, err
 		}
 
 		outputFile := "problem/" + strconv.Itoa(problemId) + "/out/" + strconv.Itoa(i) + ".out"
 		outputContents, err := os.ReadFile(outputFile)
 		if err != nil {
-			return nil, fmt.Errorf(".out 파일 읽기 실패: %v\n", err)
+			log.Fatal(err)
+			return nil, err
 		}
 
 		result := checkDifference(output, outputContents)
@@ -155,16 +176,18 @@ func judge(runCmd []string, problemId, testcases int) ([]bool, error) {
 }
 
 func report(results []bool) JudgeResultEnum {
-	fmt.Println("-----------------------")
+	log.Info("-----------------------")
 	if len(results) < 1 {
-		fmt.Println(JudgeError.String())
+		log.Info(JudgeError.String())
 		return JudgeError
 	}
+
 	if !All(results) {
-		fmt.Println(JudgeFail.String())
+		log.Info(JudgeFail.String())
 		return JudgeFail
 	}
-	fmt.Println(JudgePass.String())
+
+	log.Info(JudgePass.String())
 	return JudgePass
 }
 
@@ -172,11 +195,12 @@ func removeLineFeed(output []byte) []byte {
 	if len(output) > 0 && output[len(output)-1] == 10 {
 		return output[:len(output)-1]
 	}
+
 	return output
 }
 
 func executeProgram(runCmd []string, inputContents []byte) ([]byte, error) {
-	fmt.Println("프로그램 실행 중...")
+	log.Info("프로그램 실행 중...")
 	cmd := exec.Command(runCmd[0], runCmd[1:]...)
 	cmd.Stdin = bytes.NewReader(inputContents)
 
@@ -185,7 +209,8 @@ func executeProgram(runCmd []string, inputContents []byte) ([]byte, error) {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("%w", err)
+		log.Fatal(err)
+		return nil, err
 	}
 
 	output := outputBuffer.Bytes()
@@ -194,29 +219,30 @@ func executeProgram(runCmd []string, inputContents []byte) ([]byte, error) {
 }
 
 func checkDifference(result, outputContents []byte) bool {
-	fmt.Println("예상 결과")
-	fmt.Println(result)
-	fmt.Println(string(result))
-	fmt.Println("실제 결과")
-	fmt.Println(outputContents)
-	fmt.Println(string(outputContents))
+	log.Info("예상 결과")
+	log.Info(result)
+	log.Info(string(result))
+	log.Info("실제 결과")
+	log.Info(outputContents)
+	log.Info(string(outputContents))
 
-	fmt.Println("결과를 비교 중...")
+	log.Info("결과를 비교 중...")
 	if !bytes.Equal(result, outputContents) {
-		fmt.Println("결과가 일치하지 않습니다.")
+		log.Info("결과가 일치하지 않습니다.")
 		return false
 	}
-	fmt.Println("결과가 일치합니다!")
+
+	log.Info("결과가 일치합니다!")
 	return true
 }
 
-func deleteProgram(language string, requireBuild bool, deleteCmd []string) {
-	fmt.Println("-----------------------")
-	fmt.Println("생성된 실행 파일 삭제 중...")
+func deleteProgram(language string, deleteCmd []string) error {
+	log.Info("-----------------------")
+	log.Info("생성된 실행 파일 삭제 중...")
 
-	if !requireBuild {
-		fmt.Println(language + " 삭제 생략")
-		return
+	if len(deleteCmd) == 0 {
+		log.Info(language + " 삭제 생략")
+		return nil
 	}
 
 	cmd := exec.Command(deleteCmd[0], deleteCmd[1:]...)
@@ -224,8 +250,10 @@ func deleteProgram(language string, requireBuild bool, deleteCmd []string) {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("실행 파일 삭제 실패: %v\n", err)
-		return
+		log.Fatal(err)
+		return err
 	}
-	fmt.Println("실행 파일 삭제 완료!")
+
+	log.Info("실행 파일 삭제 완료!")
+	return nil
 }

@@ -2,15 +2,16 @@ package utils
 
 import (
 	"encoding/base64"
-	"fmt"
+
+	"github.com/gofiber/fiber/v2/log"
 )
 
-func Decode(encodedString string) []byte {
+func Decode(encodedString string) ([]byte, error) {
 	decodedBytes, err := base64.StdEncoding.DecodeString(encodedString)
 	if err != nil {
-		fmt.Println("디코딩 실패: ", err)
-		return nil
+		log.Fatal(err)
+		return nil, err
 	}
 
-	return decodedBytes
+	return decodedBytes, nil
 }

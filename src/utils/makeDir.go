@@ -1,13 +1,16 @@
 package utils
 
 import (
-	"fmt"
 	"os"
+
+	"github.com/gofiber/fiber/v2/log"
 )
 
-func MakeDir(path string) {
+func MakeDir(path string) error {
 	if err := os.MkdirAll(path, os.ModePerm); err != nil {
-		fmt.Printf("디렉토리 생성 실패: %v\n", err)
-		return
+		log.Fatal(err)
+		return err
 	}
+
+	return nil
 }
