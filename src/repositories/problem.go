@@ -17,7 +17,7 @@ type problemRepository struct {
 func NewProblemRepository() (ProblemRepository, error) {
 	dataSource, err := dataSources.NewDataSource()
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return nil, err
 	}
 

@@ -9,7 +9,7 @@ import (
 func RegisterProblemRoutes(api fiber.Router) error {
 	handler, err := handlers.NewProblemHandler()
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return err
 	}
 

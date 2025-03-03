@@ -10,25 +10,25 @@ import (
 func CopyFile(srcFilePath, dstFilePath string) error {
 	src, err := os.Open(srcFilePath)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return err
 	}
 	defer func(src *os.File) {
 		err = src.Close()
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
 		}
 	}(src)
 
 	dst, err := os.Create(dstFilePath)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return err
 	}
 	defer func(dst *os.File) {
 		err = dst.Close()
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
 		}
 	}(dst)
 

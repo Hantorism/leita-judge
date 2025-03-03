@@ -26,7 +26,7 @@ type problemService struct {
 func NewProblemService() (ProblemService, error) {
 	repository, err := repositories.NewProblemRepository()
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return nil, err
 	}
 
@@ -47,7 +47,7 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (SubmitProble
 	printSubmitProblemInfo(language, submitId, problemId, code)
 
 	if err := copyTestCases(submitId, problemId); err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return SubmitProblemResult{
 			Status:       fiber.StatusInternalServerError,
 			IsSuccessful: false,
@@ -64,12 +64,12 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (SubmitProble
 		}
 
 		if err := service.repository.SaveSubmitResult(saveSubmitResultDAO); err != nil {
-			log.Fatal(err)
+			log.Error(err)
 		}
 	}()
 
 	if err := buildSource(submitId, language, "submit", code, buildCmd); err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return SubmitProblemResult{
 			Status:       fiber.StatusInternalServerError,
 			IsSuccessful: false,
@@ -80,13 +80,13 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (SubmitProble
 	defer func(language string, deleteCmd []string) {
 		err := deleteProgram(language, deleteCmd)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
 		}
 	}(language, deleteCmd)
 
 	judgeResults, err := judge(runCmd, submitId, "submit")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return SubmitProblemResult{
 			Status:       fiber.StatusInternalServerError,
 			IsSuccessful: false,
@@ -120,7 +120,7 @@ func (service *problemService) RunProblem(dto RunProblemDTO) (RunProblemResult, 
 	deleteCmd := dto.DeleteCmd
 
 	if err := printRunProblemInfo(language, submitId, problemId, code, testCases); err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return RunProblemResult{
 			Status:       fiber.StatusInternalServerError,
 			IsSuccessful: false,
@@ -129,7 +129,7 @@ func (service *problemService) RunProblem(dto RunProblemDTO) (RunProblemResult, 
 	}
 
 	if err := saveTestCases(submitId, testCases); err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return RunProblemResult{
 			Status:       fiber.StatusInternalServerError,
 			IsSuccessful: false,
@@ -138,7 +138,7 @@ func (service *problemService) RunProblem(dto RunProblemDTO) (RunProblemResult, 
 	}
 
 	if err := buildSource(submitId, language, "run", code, buildCmd); err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return RunProblemResult{
 			Status:       fiber.StatusInternalServerError,
 			IsSuccessful: false,
@@ -149,13 +149,13 @@ func (service *problemService) RunProblem(dto RunProblemDTO) (RunProblemResult, 
 	defer func(language string, deleteCmd []string) {
 		err := deleteProgram(language, deleteCmd)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
 		}
 	}(language, deleteCmd)
 
 	judgeResults, err := judge(runCmd, submitId, "run")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return RunProblemResult{
 			Status:       fiber.StatusInternalServerError,
 			IsSuccessful: false,
@@ -198,14 +198,14 @@ func printRunProblemInfo(language string, submitId int, problemId int, code []by
 
 		input, err := Decode(testCase.Input)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
 			return err
 		}
 		log.Info("입력:\n", string(input))
 
 		output, err := Decode(testCase.Output)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
 			return err
 		}
 		log.Info("출력:\n", string(output))
@@ -219,12 +219,12 @@ func copyTestCases(submitId int, problemId int) error {
 	log.Info("테스트 케이스 복사 중...")
 
 	if err := MakeDir("submit/" + strconv.Itoa(submitId) + "/in/"); err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return err
 	}
 
 	if err := MakeDir("submit/" + strconv.Itoa(submitId) + "/out/"); err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return err
 	}
 
@@ -237,12 +237,12 @@ func copyTestCases(submitId int, problemId int) error {
 		dstOutputFilePath := "submit/" + strconv.Itoa(submitId) + "/out/" + strconv.Itoa(i) + ".out"
 
 		if err := CopyFile(srcInputFilePath, dstInputFilePath); err != nil {
-			log.Fatal(err)
+			log.Error(err)
 			return err
 		}
 
 		if err := CopyFile(srcOutputFilePath, dstOutputFilePath); err != nil {
-			log.Fatal(err)
+			log.Error(err)
 			return err
 		}
 	}
@@ -256,12 +256,12 @@ func saveTestCases(submitId int, testCases []TestCase) error {
 	log.Info("테스트 케이스 저장 중...")
 
 	if err := MakeDir("run/" + strconv.Itoa(submitId) + "/in/"); err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return err
 	}
 
 	if err := MakeDir("run/" + strconv.Itoa(submitId) + "/out/"); err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return err
 	}
 
@@ -269,7 +269,7 @@ func saveTestCases(submitId int, testCases []TestCase) error {
 		inputFilePath := "run/" + strconv.Itoa(submitId) + "/in/" + strconv.Itoa(i) + ".in"
 		inputContents, err := Decode(testCase.Input)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
 			return err
 		}
 		if err = os.WriteFile(inputFilePath, inputContents, 0644); err != nil {
@@ -279,7 +279,7 @@ func saveTestCases(submitId int, testCases []TestCase) error {
 		outputFilePath := "run/" + strconv.Itoa(submitId) + "/out/" + strconv.Itoa(i) + ".out"
 		outputContents, err := Decode(testCase.Output)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
 			return err
 		}
 		if err = os.WriteFile(outputFilePath, outputContents, 0644); err != nil {
@@ -296,7 +296,7 @@ func saveSourceCode(submitId int, code []byte, language, judgeType string) error
 	log.Info("소스 코드 저장 중...")
 
 	if err := MakeDir(judgeType + "/" + strconv.Itoa(submitId) + "/"); err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return err
 	}
 
@@ -311,7 +311,7 @@ func saveSourceCode(submitId int, code []byte, language, judgeType string) error
 
 func buildSource(submitId int, language, judgeType string, code []byte, buildCmd []string) error {
 	if err := saveSourceCode(submitId, code, language, judgeType); err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return err
 	}
 
@@ -327,7 +327,7 @@ func buildSource(submitId int, language, judgeType string, code []byte, buildCmd
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return err
 	}
 
@@ -347,20 +347,20 @@ func judge(runCmd []string, submitId int, judgeType string) ([]bool, error) {
 		inputFile := judgeType + "/" + strconv.Itoa(submitId) + "/in/" + strconv.Itoa(i) + ".in"
 		inputContents, err := os.ReadFile(inputFile)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
 			return nil, err
 		}
 
 		result, err := executeProgram(runCmd, inputContents)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
 			return nil, err
 		}
 
 		outputFile := judgeType + "/" + strconv.Itoa(submitId) + "/out/" + strconv.Itoa(i) + ".out"
 		outputContents, err := os.ReadFile(outputFile)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
 			return nil, err
 		}
 
@@ -405,7 +405,7 @@ func executeProgram(runCmd []string, inputContents []byte) ([]byte, error) {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return nil, err
 	}
 
@@ -442,7 +442,7 @@ func deleteProgram(language string, deleteCmd []string) error {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return err
 	}
 

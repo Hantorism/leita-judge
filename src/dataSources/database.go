@@ -27,7 +27,7 @@ func getDSN() (string, error) {
 	}
 	if !AllString(dbConf.User, dbConf.Password, dbConf.Host, dbConf.Port, dbConf.Name) {
 		err := fmt.Errorf("invalid database configuration")
-		log.Fatal(err)
+		log.Error(err)
 		return "", err
 	}
 
@@ -45,19 +45,19 @@ func getDSN() (string, error) {
 func NewDatabase() (*sql.DB, error) {
 	dsn, err := getDSN()
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return nil, err
 	}
 
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return nil, err
 	}
 
 	if err = db.Ping(); err != nil {
 		_ = db.Close()
-		log.Fatal(err)
+		log.Error(err)
 		return nil, err
 	}
 

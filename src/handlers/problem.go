@@ -24,7 +24,7 @@ type problemHandler struct {
 func NewProblemHandler() (ProblemHandler, error) {
 	service, err := services.NewProblemService()
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return nil, err
 	}
 
@@ -58,7 +58,7 @@ func (handler *problemHandler) SubmitProblem() fiber.Handler {
 		language := req.Language
 		code, err := Decode(req.Code)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
 			return err
 		}
 		command := Commands[language]
@@ -78,7 +78,7 @@ func (handler *problemHandler) SubmitProblem() fiber.Handler {
 
 		submitProblemResult, err := handler.service.SubmitProblem(submitProblemDTO)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
 			return err
 		}
 
@@ -120,7 +120,7 @@ func (handler *problemHandler) RunProblem() fiber.Handler {
 		language := req.Language
 		code, err := Decode(req.Code)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
 			return err
 		}
 		testCases := req.TestCases
@@ -143,7 +143,7 @@ func (handler *problemHandler) RunProblem() fiber.Handler {
 
 		runProblemResult, err := handler.service.RunProblem(runProblemDTO)
 		if err != nil {
-			log.Fatal(err)
+			log.Error(err)
 			return err
 		}
 

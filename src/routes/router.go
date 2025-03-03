@@ -9,7 +9,7 @@ func RegisterRoutes(app *fiber.App) error {
 	api := app.Group("/api")
 
 	if err := RegisterProblemRoutes(api); err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return err
 	}
 

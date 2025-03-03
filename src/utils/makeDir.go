@@ -8,7 +8,7 @@ import (
 
 func MakeDir(path string) error {
 	if err := os.MkdirAll(path, os.ModePerm); err != nil {
-		log.Fatal(err)
+		log.Error(err)
 		return err
 	}
 
