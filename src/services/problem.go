@@ -336,7 +336,11 @@ func buildSource(submitId int, language, judgeType string, code []byte, buildCmd
 }
 
 func judge(runCmd []string, submitId int, judgeType string) ([]bool, error) {
-	testCaseNum := 1
+	testCaseNum, err := GetTestCaseNum(judgeType + "/" + strconv.Itoa(submitId) + "/in/")
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
 
 	judgeResults := make([]bool, 0, testCaseNum)
 
