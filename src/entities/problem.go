@@ -8,6 +8,7 @@ type SubmitProblemRequest struct {
 
 type SubmitProblemResponse struct {
 	IsSuccessful bool   `json:"isSuccessful"`
+	Result string `json:"result"`
 	Error        string `json:"error"`
 }
 
@@ -28,12 +29,6 @@ type SaveSubmitResultDAO struct {
 	UsedTime   int
 }
 
-type SubmitProblemResult struct {
-	Status       int
-	IsSuccessful bool
-	Error        error
-}
-
 type RunProblemRequest struct {
 	Language  string     `json:"language"`
 	Code      string     `json:"code"`
@@ -41,8 +36,9 @@ type RunProblemRequest struct {
 }
 
 type RunProblemResponse struct {
-	IsSuccessful []bool `json:"isSuccessful"`
-	Error        string `json:"error"`
+	IsSuccessful bool     `json:"isSuccessful"`
+	Results      []string `json:"result"`
+	Error        string   `json:"error"`
 }
 
 type TestCase struct {
@@ -66,12 +62,6 @@ type SaveRunResultDAO struct {
 	Result     string
 	UsedMemory int
 	UsedTime   int
-}
-
-type RunProblemResult struct {
-	Status       int
-	IsSuccessful []bool
-	Error        error
 }
 
 type JudgeResultEnum int

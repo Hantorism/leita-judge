@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"strconv"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
 	. "leita/src/entities"
 	. "leita/src/functions"
@@ -15,8 +14,8 @@ import (
 )
 
 type ProblemService interface {
-	SubmitProblem(dto SubmitProblemDTO) (SubmitProblemResult, error)
-	RunProblem(dto RunProblemDTO) (RunProblemResult, error)
+	SubmitProblem(dto SubmitProblemDTO) (string, error)
+	RunProblem(dto RunProblemDTO) ([]string, error)
 }
 
 type problemService struct {
@@ -35,7 +34,7 @@ func NewProblemService() (ProblemService, error) {
 	}, nil
 }
 
-func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (SubmitProblemResult, error) {
+func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (string, error) {
 	problemId := dto.ProblemId
 	submitId := dto.SubmitId
 	language := dto.Language
@@ -48,11 +47,7 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (SubmitProble
 
 	if err := copyTestCases(submitId, problemId); err != nil {
 		log.Error(err)
-		return SubmitProblemResult{
-			Status:       fiber.StatusInternalServerError,
-			IsSuccessful: false,
-			Error:        err,
-		}, err
+		return "", err
 	}
 
 	defer func() {
@@ -70,16 +65,11 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (SubmitProble
 
 	if err := buildSource(submitId, language, "submit", code, buildCmd); err != nil {
 		log.Error(err)
-		return SubmitProblemResult{
-			Status:       fiber.StatusInternalServerError,
-			IsSuccessful: false,
-			Error:        err,
-		}, err
+		return "", err
 	}
 
 	defer func(language string, deleteCmd []string) {
-		err := deleteProgram(language, deleteCmd)
-		if err != nil {
+		if err := deleteProgram(language, deleteCmd); err != nil {
 			log.Error(err)
 		}
 	}(language, deleteCmd)
@@ -87,29 +77,17 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (SubmitProble
 	judgeResults, err := judge(runCmd, submitId, "submit")
 	if err != nil {
 		log.Error(err)
-		return SubmitProblemResult{
-			Status:       fiber.StatusInternalServerError,
-			IsSuccessful: false,
-			Error:        err,
-		}, err
+		return "", err
 	}
 
 	if judgeResult := report(judgeResults); judgeResult != JudgePass {
-		return SubmitProblemResult{
-			Status:       fiber.StatusOK,
-			IsSuccessful: false,
-			Error:        nil,
-		}, nil
+		return "WRONG", nil
 	}
 
-	return SubmitProblemResult{
-		Status:       fiber.StatusOK,
-		IsSuccessful: true,
-		Error:        nil,
-	}, nil
+	return "CORRECT", nil
 }
 
-func (service *problemService) RunProblem(dto RunProblemDTO) (RunProblemResult, error) {
+func (service *problemService) RunProblem(dto RunProblemDTO) ([]string, error) {
 	problemId := dto.ProblemId
 	submitId := dto.SubmitId
 	language := dto.Language
@@ -121,34 +99,21 @@ func (service *problemService) RunProblem(dto RunProblemDTO) (RunProblemResult, 
 
 	if err := printRunProblemInfo(language, submitId, problemId, code, testCases); err != nil {
 		log.Error(err)
-		return RunProblemResult{
-			Status:       fiber.StatusInternalServerError,
-			IsSuccessful: []bool{},
-			Error:        err,
-		}, err
+		return []string{}, err
 	}
 
 	if err := saveTestCases(submitId, testCases); err != nil {
 		log.Error(err)
-		return RunProblemResult{
-			Status:       fiber.StatusInternalServerError,
-			IsSuccessful: []bool{},
-			Error:        err,
-		}, err
+		return []string{}, err
 	}
 
 	if err := buildSource(submitId, language, "run", code, buildCmd); err != nil {
 		log.Error(err)
-		return RunProblemResult{
-			Status:       fiber.StatusInternalServerError,
-			IsSuccessful: []bool{},
-			Error:        err,
-		}, err
+		return []string{}, err
 	}
 
 	defer func(language string, deleteCmd []string) {
-		err := deleteProgram(language, deleteCmd)
-		if err != nil {
+		if err := deleteProgram(language, deleteCmd); err != nil {
 			log.Error(err)
 		}
 	}(language, deleteCmd)
@@ -156,18 +121,32 @@ func (service *problemService) RunProblem(dto RunProblemDTO) (RunProblemResult, 
 	judgeResults, err := judge(runCmd, submitId, "run")
 	if err != nil {
 		log.Error(err)
-		return RunProblemResult{
-			Status:       fiber.StatusInternalServerError,
-			IsSuccessful: []bool{},
-			Error:        err,
-		}, err
+		return []string{}, err
 	}
 
-	return RunProblemResult{
-		Status:       fiber.StatusOK,
-		IsSuccessful: judgeResults,
-		Error:        nil,
-	}, nil
+	if judgeResult := report(judgeResults); judgeResult != JudgePass {
+		//임시
+		temp := make([]string, 0, len(judgeResults))
+		for _, result := range judgeResults {
+			if result {
+				temp = append(temp, "CORRECT")
+				continue
+			}
+			temp = append(temp, "WRONG")
+		}
+		return temp, nil
+	}
+
+	//임시
+	temp := make([]string, 0, len(judgeResults))
+	for _, result := range judgeResults {
+		if result {
+			temp = append(temp, "CORRECT")
+			continue
+		}
+		temp = append(temp, "WRONG")
+	}
+	return temp, nil
 }
 
 func printSubmitProblemInfo(language string, submitId int, problemId int, code []byte) {
