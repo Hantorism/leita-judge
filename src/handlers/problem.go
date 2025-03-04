@@ -111,7 +111,7 @@ func (handler *problemHandler) RunProblem() fiber.Handler {
 		var req RunProblemRequest
 		if err := c.BodyParser(&req); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(RunProblemResponse{
-				IsSuccessful: false,
+				IsSuccessful: []bool{},
 				Error:        err.Error(),
 			})
 		}

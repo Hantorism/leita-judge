@@ -41,7 +41,7 @@ type RunProblemRequest struct {
 }
 
 type RunProblemResponse struct {
-	IsSuccessful bool   `json:"isSuccessful"`
+	IsSuccessful []bool `json:"isSuccessful"`
 	Error        string `json:"error"`
 }
 
@@ -70,7 +70,7 @@ type SaveRunResultDAO struct {
 
 type RunProblemResult struct {
 	Status       int
-	IsSuccessful bool
+	IsSuccessful []bool
 	Error        error
 }
 

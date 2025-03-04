@@ -123,7 +123,7 @@ func (service *problemService) RunProblem(dto RunProblemDTO) (RunProblemResult, 
 		log.Error(err)
 		return RunProblemResult{
 			Status:       fiber.StatusInternalServerError,
-			IsSuccessful: false,
+			IsSuccessful: []bool{},
 			Error:        err,
 		}, err
 	}
@@ -132,7 +132,7 @@ func (service *problemService) RunProblem(dto RunProblemDTO) (RunProblemResult, 
 		log.Error(err)
 		return RunProblemResult{
 			Status:       fiber.StatusInternalServerError,
-			IsSuccessful: false,
+			IsSuccessful: []bool{},
 			Error:        err,
 		}, err
 	}
@@ -141,7 +141,7 @@ func (service *problemService) RunProblem(dto RunProblemDTO) (RunProblemResult, 
 		log.Error(err)
 		return RunProblemResult{
 			Status:       fiber.StatusInternalServerError,
-			IsSuccessful: false,
+			IsSuccessful: []bool{},
 			Error:        err,
 		}, err
 	}
@@ -158,22 +158,14 @@ func (service *problemService) RunProblem(dto RunProblemDTO) (RunProblemResult, 
 		log.Error(err)
 		return RunProblemResult{
 			Status:       fiber.StatusInternalServerError,
-			IsSuccessful: false,
+			IsSuccessful: []bool{},
 			Error:        err,
 		}, err
 	}
 
-	if judgeResult := report(judgeResults); judgeResult != JudgePass {
-		return RunProblemResult{
-			Status:       fiber.StatusOK,
-			IsSuccessful: false,
-			Error:        nil,
-		}, nil
-	}
-
 	return RunProblemResult{
 		Status:       fiber.StatusOK,
-		IsSuccessful: true,
+		IsSuccessful: judgeResults,
 		Error:        nil,
 	}, nil
 }
