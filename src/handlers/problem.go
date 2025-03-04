@@ -49,6 +49,7 @@ func (handler *problemHandler) SubmitProblem() fiber.Handler {
 		if err := c.BodyParser(&req); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(SubmitProblemResponse{
 				IsSuccessful: false,
+				Result: "",
 				Error:        err.Error(),
 			})
 		}
@@ -59,7 +60,11 @@ func (handler *problemHandler) SubmitProblem() fiber.Handler {
 		code, err := Decode(req.Code)
 		if err != nil {
 			log.Error(err)
-			return err
+			return c.Status(fiber.StatusInternalServerError).JSON(SubmitProblemResponse{
+				IsSuccessful: false,
+				Result:       "",
+				Error:        err.Error(),
+			})
 		}
 		command := Commands[language]
 		buildCmd := ReplaceCommand(command.BuildCmd, "submit", submitId)
@@ -76,21 +81,19 @@ func (handler *problemHandler) SubmitProblem() fiber.Handler {
 			DeleteCmd: deleteCmd,
 		}
 
-		submitProblemResult, err := handler.service.SubmitProblem(submitProblemDTO)
+		result, err := handler.service.SubmitProblem(submitProblemDTO)
 		if err != nil {
 			log.Error(err)
-			return err
-		}
-
-		if submitProblemResult.Error != nil {
-			return c.Status(submitProblemResult.Status).JSON(SubmitProblemResponse{
-				IsSuccessful: submitProblemResult.IsSuccessful,
-				Error:        submitProblemResult.Error.Error(),
+			return c.Status(fiber.StatusInternalServerError).JSON(SubmitProblemResponse{
+				IsSuccessful: false,
+				Result:       "",
+				Error:        err.Error(),
 			})
 		}
 
-		return c.Status(submitProblemResult.Status).JSON(SubmitProblemResponse{
-			IsSuccessful: submitProblemResult.IsSuccessful,
+		return c.Status(fiber.StatusOK).JSON(SubmitProblemResponse{
+			IsSuccessful: true,
+			Result:       result,
 			Error:        "",
 		})
 	}
@@ -112,6 +115,7 @@ func (handler *problemHandler) RunProblem() fiber.Handler {
 		if err := c.BodyParser(&req); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(RunProblemResponse{
 				IsSuccessful: false,
+				Results:      []string{},
 				Error:        err.Error(),
 			})
 		}
@@ -121,7 +125,11 @@ func (handler *problemHandler) RunProblem() fiber.Handler {
 		code, err := Decode(req.Code)
 		if err != nil {
 			log.Error(err)
-			return err
+			return c.Status(fiber.StatusInternalServerError).JSON(RunProblemResponse{
+				IsSuccessful: false,
+				Results:      []string{},
+				Error:        err.Error(),
+			})
 		}
 		testCases := req.TestCases
 		submitId := RandomInt(int(math.Pow10(11)), int(math.Pow10(12)-1))
@@ -141,21 +149,19 @@ func (handler *problemHandler) RunProblem() fiber.Handler {
 			DeleteCmd: deleteCmd,
 		}
 
-		runProblemResult, err := handler.service.RunProblem(runProblemDTO)
+		results, err := handler.service.RunProblem(runProblemDTO)
 		if err != nil {
 			log.Error(err)
-			return err
-		}
-
-		if runProblemResult.Error != nil {
-			return c.Status(runProblemResult.Status).JSON(RunProblemResponse{
-				IsSuccessful: runProblemResult.IsSuccessful,
-				Error:        runProblemResult.Error.Error(),
+			return c.Status(fiber.StatusInternalServerError).JSON(RunProblemResponse{
+				IsSuccessful: false,
+				Results:      []string{},
+				Error:        err.Error(),
 			})
 		}
 
-		return c.Status(runProblemResult.Status).JSON(RunProblemResponse{
-			IsSuccessful: runProblemResult.IsSuccessful,
+		return c.Status(fiber.StatusOK).JSON(RunProblemResponse{
+			IsSuccessful: true,
+			Results:      results,
 			Error:        "",
 		})
 	}
