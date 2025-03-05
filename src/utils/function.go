@@ -1,4 +1,4 @@
-package functions
+package utils
 
 func All(s []bool) bool {
 	for _, v := range s {
