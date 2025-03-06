@@ -19,6 +19,7 @@ import (
 func main() {
 	if err := initialize(); err != nil {
 		log.Fatal(err)
+		return
 	}
 
 	app := fiber.New()
@@ -34,6 +35,7 @@ func main() {
 
 	if err := RegisterRoutes(app); err != nil {
 		log.Fatal(err)
+		return
 	}
 
 	log.Fatal(app.Listen(":" + os.Getenv("JUDGE_PORT")))
