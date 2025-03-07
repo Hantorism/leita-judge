@@ -36,9 +36,9 @@ type RunProblemRequest struct {
 }
 
 type RunProblemResponse struct {
-	IsSuccessful bool     `json:"isSuccessful"`
-	Results      []string `json:"result"`
-	Error        string   `json:"error"`
+	IsSuccessful bool   `json:"isSuccessful"`
+	Result       string `json:"result"`
+	Error        string `json:"error"`
 }
 
 type TestCase struct {
@@ -64,23 +64,38 @@ type SaveRunResultDAO struct {
 	UsedTime   int
 }
 
+type RunProblemResult struct {
+	Result JudgeResultEnum
+	Error  error
+}
+
 type JudgeResultEnum int
 
 const (
-	JudgePass JudgeResultEnum = iota
-	JudgeFail
-	JudgeError
+	JudgeCorrect JudgeResultEnum = iota
+	JudgeWrong
+	JudgeCompileError
+	JudgeRuntimeError
+	JudgeMemoryOut
+	JudgeTimeOut
+	JudgeUnknown
 )
 
 func (jr JudgeResultEnum) String() string {
 	switch jr {
-	case JudgeError:
-		return "채점 중 이상이 있습니다."
-	case JudgeFail:
-		return "문제를 틀렸습니다."
-	case JudgePass:
-		return "문제를 맞췄습니다!"
+	case JudgeCorrect:
+		return "CORRECT"
+	case JudgeWrong:
+		return "WRONG"
+	case JudgeCompileError:
+		return "COMPILE_ERROR"
+	case JudgeRuntimeError:
+		return "RUNTIME_ERROR"
+	case JudgeMemoryOut:
+		return "MEMORY_OUT"
+	case JudgeTimeOut:
+		return "TIME_OUT"
 	default:
-		return "error"
+		return "UNKNOWN"
 	}
 }

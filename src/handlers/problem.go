@@ -86,14 +86,14 @@ func (handler *problemHandler) SubmitProblem() fiber.Handler {
 			log.Error(err)
 			return c.Status(fiber.StatusInternalServerError).JSON(SubmitProblemResponse{
 				IsSuccessful: false,
-				Result:       "",
+				Result: result.String(),
 				Error:        err.Error(),
 			})
 		}
 
 		return c.Status(fiber.StatusOK).JSON(SubmitProblemResponse{
 			IsSuccessful: true,
-			Result:       result,
+			Result: result.String(),
 			Error:        "",
 		})
 	}
@@ -113,10 +113,12 @@ func (handler *problemHandler) RunProblem() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req RunProblemRequest
 		if err := c.BodyParser(&req); err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(RunProblemResponse{
-				IsSuccessful: false,
-				Results:      []string{},
-				Error:        err.Error(),
+			return c.Status(fiber.StatusBadRequest).JSON([]RunProblemResponse{
+				{
+					IsSuccessful: false,
+					Result:       "",
+					Error:        err.Error(),
+				},
 			})
 		}
 
@@ -125,10 +127,12 @@ func (handler *problemHandler) RunProblem() fiber.Handler {
 		code, err := Decode(req.Code)
 		if err != nil {
 			log.Error(err)
-			return c.Status(fiber.StatusInternalServerError).JSON(RunProblemResponse{
-				IsSuccessful: false,
-				Results:      []string{},
-				Error:        err.Error(),
+			return c.Status(fiber.StatusInternalServerError).JSON([]RunProblemResponse{
+				{
+					IsSuccessful: false,
+					Result:       "",
+					Error:        err.Error(),
+				},
 			})
 		}
 		testCases := req.TestCases
@@ -149,20 +153,22 @@ func (handler *problemHandler) RunProblem() fiber.Handler {
 			DeleteCmd: deleteCmd,
 		}
 
-		results, err := handler.service.RunProblem(runProblemDTO)
-		if err != nil {
-			log.Error(err)
-			return c.Status(fiber.StatusInternalServerError).JSON(RunProblemResponse{
-				IsSuccessful: false,
-				Results:      []string{},
-				Error:        err.Error(),
+		results := handler.service.RunProblem(runProblemDTO)
+
+		responses := make([]RunProblemResponse, 0, len(results))
+		for _, result := range results {
+			responses = append(responses, RunProblemResponse{
+				IsSuccessful: result.Result == JudgeCorrect || result.Result == JudgeWrong,
+				Result:       result.Result.String(),
+				Error: func() string {
+					if result.Error != nil {
+						return result.Error.Error()
+					}
+					return ""
+				}(),
 			})
 		}
 
-		return c.Status(fiber.StatusOK).JSON(RunProblemResponse{
-			IsSuccessful: true,
-			Results:      results,
-			Error:        "",
-		})
+		return c.Status(fiber.StatusOK).JSON(responses)
 	}
 }

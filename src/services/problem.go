@@ -8,14 +8,13 @@ import (
 
 	"github.com/gofiber/fiber/v2/log"
 	. "leita/src/entities"
-	. "leita/src/functions"
 	"leita/src/repositories"
 	. "leita/src/utils"
 )
 
 type ProblemService interface {
-	SubmitProblem(dto SubmitProblemDTO) (string, error)
-	RunProblem(dto RunProblemDTO) ([]string, error)
+	SubmitProblem(dto SubmitProblemDTO) (JudgeResultEnum, error)
+	RunProblem(dto RunProblemDTO) []RunProblemResult
 }
 
 type problemService struct {
@@ -34,7 +33,7 @@ func NewProblemService() (ProblemService, error) {
 	}, nil
 }
 
-func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (string, error) {
+func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultEnum, error) {
 	problemId := dto.ProblemId
 	submitId := dto.SubmitId
 	language := dto.Language
@@ -43,16 +42,18 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (string, erro
 	runCmd := dto.RunCmd
 	deleteCmd := dto.DeleteCmd
 
+	result := JudgeUnknown
+
 	printSubmitProblemInfo(language, submitId, problemId, code)
 
 	if err := copyTestCases(submitId, problemId); err != nil {
 		log.Error(err)
-		return "", err
+		return result, err
 	}
 
 	defer func() {
 		saveSubmitResultDAO := SaveSubmitResultDAO{
-			Result:     "CORRECT",
+			Result: result.String(),
 			UsedMemory: 1,
 			UsedTime:   1,
 			SubmitId:   submitId,
@@ -63,31 +64,28 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (string, erro
 		}
 	}()
 
-	if err := buildSource(submitId, language, "submit", code, buildCmd); err != nil {
+	result, err := buildSource(submitId, language, "submit", code, buildCmd)
+	if err != nil {
 		log.Error(err)
-		return "", err
+		return result, err
 	}
 
 	defer func(language string, deleteCmd []string) {
-		if err := deleteProgram(language, deleteCmd); err != nil {
+		if err = deleteProgram(language, deleteCmd); err != nil {
 			log.Error(err)
 		}
 	}(language, deleteCmd)
 
-	judgeResults, err := judge(runCmd, submitId, "submit")
+	result, err = judgeSubmit(runCmd, submitId, "submit")
 	if err != nil {
 		log.Error(err)
-		return "", err
+		return result, err
 	}
 
-	if judgeResult := report(judgeResults); judgeResult != JudgePass {
-		return "WRONG", nil
-	}
-
-	return "CORRECT", nil
+	return result, nil
 }
 
-func (service *problemService) RunProblem(dto RunProblemDTO) ([]string, error) {
+func (service *problemService) RunProblem(dto RunProblemDTO) []RunProblemResult {
 	problemId := dto.ProblemId
 	submitId := dto.SubmitId
 	language := dto.Language
@@ -97,56 +95,33 @@ func (service *problemService) RunProblem(dto RunProblemDTO) ([]string, error) {
 	runCmd := dto.RunCmd
 	deleteCmd := dto.DeleteCmd
 
+	result := JudgeUnknown
+
 	if err := printRunProblemInfo(language, submitId, problemId, code, testCases); err != nil {
 		log.Error(err)
-		return []string{}, err
+		return []RunProblemResult{{result, err}}
 	}
 
 	if err := saveTestCases(submitId, testCases); err != nil {
 		log.Error(err)
-		return []string{}, err
+		return []RunProblemResult{{result, err}}
 	}
 
-	if err := buildSource(submitId, language, "run", code, buildCmd); err != nil {
+	result, err := buildSource(submitId, language, "run", code, buildCmd)
+	if err != nil {
 		log.Error(err)
-		return []string{}, err
+		return []RunProblemResult{{result, err}}
 	}
 
 	defer func(language string, deleteCmd []string) {
-		if err := deleteProgram(language, deleteCmd); err != nil {
+		if err = deleteProgram(language, deleteCmd); err != nil {
 			log.Error(err)
 		}
 	}(language, deleteCmd)
 
-	judgeResults, err := judge(runCmd, submitId, "run")
-	if err != nil {
-		log.Error(err)
-		return []string{}, err
-	}
+	results := judgeRun(runCmd, submitId, "run")
 
-	if judgeResult := report(judgeResults); judgeResult != JudgePass {
-		//임시
-		temp := make([]string, 0, len(judgeResults))
-		for _, result := range judgeResults {
-			if result {
-				temp = append(temp, "CORRECT")
-				continue
-			}
-			temp = append(temp, "WRONG")
-		}
-		return temp, nil
-	}
-
-	//임시
-	temp := make([]string, 0, len(judgeResults))
-	for _, result := range judgeResults {
-		if result {
-			temp = append(temp, "CORRECT")
-			continue
-		}
-		temp = append(temp, "WRONG")
-	}
-	return temp, nil
+	return results
 }
 
 func printSubmitProblemInfo(language string, submitId int, problemId int, code []byte) {
@@ -185,7 +160,7 @@ func printRunProblemInfo(language string, submitId int, problemId int, code []by
 	return nil
 }
 
-func copyTestCases(submitId int, problemId int) error {
+func copyTestCases(submitId, problemId int) error {
 	log.Info("-----------------------")
 	log.Info("테스트 케이스 복사 중...")
 
@@ -199,7 +174,11 @@ func copyTestCases(submitId int, problemId int) error {
 		return err
 	}
 
-	testCaseNum := 1
+	testCaseNum, err := GetTestCaseNum("problem/" + strconv.Itoa(problemId) + "/in/")
+	if err != nil {
+		log.Error(err)
+		return err
+	}
 
 	for i := 0; i < testCaseNum; i++ {
 		srcInputFilePath := "problem/" + strconv.Itoa(problemId) + "/in/" + strconv.Itoa(i) + ".in"
@@ -280,17 +259,17 @@ func saveSourceCode(submitId int, code []byte, language, judgeType string) error
 	return nil
 }
 
-func buildSource(submitId int, language, judgeType string, code []byte, buildCmd []string) error {
+func buildSource(submitId int, language, judgeType string, code []byte, buildCmd []string) (JudgeResultEnum, error) {
 	if err := saveSourceCode(submitId, code, language, judgeType); err != nil {
 		log.Error(err)
-		return err
+		return JudgeUnknown, err
 	}
 
 	log.Info("-----------------------")
 	log.Info("소스 코드 빌드 중...")
 	if len(buildCmd) == 0 {
 		log.Info(language + " 빌드 생략")
-		return nil
+		return JudgeCorrect, nil
 	}
 
 	cmd := exec.Command(buildCmd[0], buildCmd[1:]...)
@@ -299,18 +278,18 @@ func buildSource(submitId int, language, judgeType string, code []byte, buildCmd
 
 	if err := cmd.Run(); err != nil {
 		log.Error(err)
-		return err
+		return JudgeCompileError, err
 	}
 
 	log.Info("소스 코드 빌드 완료!")
-	return nil
+	return JudgeCorrect, nil
 }
 
-func judge(runCmd []string, submitId int, judgeType string) ([]bool, error) {
+func judgeSubmit(runCmd []string, submitId int, judgeType string) (JudgeResultEnum, error) {
 	testCaseNum, err := GetTestCaseNum(judgeType + "/" + strconv.Itoa(submitId) + "/in/")
 	if err != nil {
 		log.Error(err)
-		return nil, err
+		return JudgeUnknown, err
 	}
 
 	judgeResults := make([]bool, 0, testCaseNum)
@@ -323,43 +302,75 @@ func judge(runCmd []string, submitId int, judgeType string) ([]bool, error) {
 		inputContents, err := os.ReadFile(inputFile)
 		if err != nil {
 			log.Error(err)
-			return nil, err
+			return JudgeUnknown, err
 		}
 
-		result, err := executeProgram(runCmd, inputContents)
+		result, executeContents, err := executeProgram(runCmd, inputContents)
 		if err != nil {
 			log.Error(err)
-			return nil, err
+			return result, err
 		}
 
 		outputFile := judgeType + "/" + strconv.Itoa(submitId) + "/out/" + strconv.Itoa(i) + ".out"
 		outputContents, err := os.ReadFile(outputFile)
 		if err != nil {
 			log.Error(err)
-			return nil, err
+			return JudgeUnknown, err
 		}
 
-		judgeResult := checkDifference(result, outputContents)
+		judgeResult := checkDifference(executeContents, outputContents)
 		judgeResults = append(judgeResults, judgeResult)
 	}
 
-	return judgeResults, nil
+	if !All(judgeResults) {
+		log.Info(JudgeWrong.String())
+		return JudgeWrong, nil
+	}
+
+	log.Info(JudgeCorrect.String())
+	return JudgeCorrect, nil
 }
 
-func report(results []bool) JudgeResultEnum {
-	log.Info("-----------------------")
-	if len(results) < 1 {
-		log.Info(JudgeError.String())
-		return JudgeError
+func judgeRun(runCmd []string, submitId int, judgeType string) []RunProblemResult {
+	testCaseNum, err := GetTestCaseNum(judgeType + "/" + strconv.Itoa(submitId) + "/in/")
+	if err != nil {
+		log.Error(err)
+		return []RunProblemResult{{JudgeUnknown, err}}
 	}
 
-	if !All(results) {
-		log.Info(JudgeFail.String())
-		return JudgeFail
+	results := make([]RunProblemResult, 0, testCaseNum)
+
+	for i := 0; i < testCaseNum; i++ {
+		log.Info("-----------------------")
+		log.Info(i+1, "번째 테스트케이스 실행")
+
+		inputFile := judgeType + "/" + strconv.Itoa(submitId) + "/in/" + strconv.Itoa(i) + ".in"
+		inputContents, err := os.ReadFile(inputFile)
+		if err != nil {
+			log.Error(err)
+			return []RunProblemResult{{JudgeUnknown, err}}
+		}
+
+		result, executeContents, err := executeProgram(runCmd, inputContents)
+		if err != nil {
+			log.Error(err)
+			return []RunProblemResult{{result, err}}
+		}
+
+		outputFile := judgeType + "/" + strconv.Itoa(submitId) + "/out/" + strconv.Itoa(i) + ".out"
+		outputContents, err := os.ReadFile(outputFile)
+		if err != nil {
+			log.Error(err)
+			return []RunProblemResult{{JudgeUnknown, err}}
+		}
+
+		judgeResult := checkDifference(executeContents, outputContents)
+		result = map[bool]JudgeResultEnum{true: JudgeCorrect, false: JudgeWrong}[judgeResult]
+		log.Info(result.String())
+		results = append(results, RunProblemResult{Result: result})
 	}
 
-	log.Info(JudgePass.String())
-	return JudgePass
+	return results
 }
 
 func removeLineFeed(output []byte) []byte {
@@ -370,7 +381,7 @@ func removeLineFeed(output []byte) []byte {
 	return output
 }
 
-func executeProgram(runCmd []string, inputContents []byte) ([]byte, error) {
+func executeProgram(runCmd []string, inputContents []byte) (JudgeResultEnum, []byte, error) {
 	log.Info("프로그램 실행 중...")
 	cmd := exec.Command(runCmd[0], runCmd[1:]...)
 	cmd.Stdin = bytes.NewReader(inputContents)
@@ -381,20 +392,20 @@ func executeProgram(runCmd []string, inputContents []byte) ([]byte, error) {
 
 	if err := cmd.Run(); err != nil {
 		log.Error(err)
-		return nil, err
+		return JudgeRuntimeError, nil, err
 	}
 
 	output := outputBuffer.Bytes()
 	output = removeLineFeed(output)
-	return output, nil
+	return JudgeCorrect, output, nil
 }
 
-func checkDifference(result, outputContents []byte) bool {
+func checkDifference(executeContents, outputContents []byte) bool {
 	log.Info("예상 결과\n", outputContents, "\n", string(outputContents))
-	log.Info("실제 결과\n", result, "\n", string(result))
+	log.Info("실제 결과\n", executeContents, "\n", string(executeContents))
 
 	log.Info("결과를 비교 중...")
-	if !bytes.Equal(result, outputContents) {
+	if !bytes.Equal(executeContents, outputContents) {
 		log.Info("결과가 일치하지 않습니다.")
 		return false
 	}

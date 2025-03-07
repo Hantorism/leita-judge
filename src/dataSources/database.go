@@ -8,7 +8,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gofiber/fiber/v2/log"
-	. "leita/src/functions"
+	. "leita/src/utils"
 )
 
 func getDSN() (string, error) {
