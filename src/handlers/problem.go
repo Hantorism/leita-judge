@@ -106,8 +106,8 @@ func (handler *problemHandler) SubmitProblem() fiber.Handler {
 //	@Tags		Problem
 //	@Param		problemId	path		string				true	"problemId"
 //	@Param		requestBody	body		RunProblemRequest	true	"requestBody"
-//	@Success	200			{object}	RunProblemResponse
-//	@Failure	500			{object}	RunProblemResponse
+//	@Success	200			{object}	[]RunProblemResponse
+//	@Failure	500			{object}	[]RunProblemResponse
 //	@Router		/problem/run/{problemId} [post]
 func (handler *problemHandler) RunProblem() fiber.Handler {
 	return func(c *fiber.Ctx) error {
