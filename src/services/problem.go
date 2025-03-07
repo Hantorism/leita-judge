@@ -125,6 +125,7 @@ func (service *problemService) RunProblem(dto RunProblemDTO) []RunProblemResult 
 }
 
 func printSubmitProblemInfo(language string, submitId int, problemId int, code []byte) {
+	log.Info("-----------------------")
 	log.Info("언어: ", language)
 	log.Info("제출 번호: ", submitId)
 	log.Info("문제 번호: ", problemId)
@@ -133,6 +134,7 @@ func printSubmitProblemInfo(language string, submitId int, problemId int, code [
 }
 
 func printRunProblemInfo(language string, submitId int, problemId int, code []byte, testCases []TestCase) error {
+	log.Info("-----------------------")
 	log.Info("언어: ", language)
 	log.Info("제출 번호: ", submitId)
 	log.Info("문제 번호: ", problemId)
@@ -186,12 +188,12 @@ func copyTestCases(submitId, problemId int) error {
 		srcOutputFilePath := "problem/" + strconv.Itoa(problemId) + "/out/" + strconv.Itoa(i) + ".out"
 		dstOutputFilePath := "submit/" + strconv.Itoa(submitId) + "/out/" + strconv.Itoa(i) + ".out"
 
-		if err := CopyFile(srcInputFilePath, dstInputFilePath); err != nil {
+		if err = CopyFile(srcInputFilePath, dstInputFilePath); err != nil {
 			log.Error(err)
 			return err
 		}
 
-		if err := CopyFile(srcOutputFilePath, dstOutputFilePath); err != nil {
+		if err = CopyFile(srcOutputFilePath, dstOutputFilePath); err != nil {
 			log.Error(err)
 			return err
 		}
@@ -323,11 +325,13 @@ func judgeSubmit(runCmd []string, submitId int, judgeType string) (JudgeResultEn
 	}
 
 	if !All(judgeResults) {
-		log.Info(JudgeWrong.String())
+		log.Info("-----------------------")
+		log.Info("문제를 맞추지 못했습니다.")
 		return JudgeWrong, nil
 	}
 
-	log.Info(JudgeCorrect.String())
+	log.Info("-----------------------")
+	log.Info("문제를 맞췄습니다!")
 	return JudgeCorrect, nil
 }
 

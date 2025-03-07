@@ -72,30 +72,23 @@ type RunProblemResult struct {
 type JudgeResultEnum int
 
 const (
-	JudgeCorrect JudgeResultEnum = iota
+	JudgeUnknown JudgeResultEnum = iota
+	JudgeCorrect
 	JudgeWrong
 	JudgeCompileError
 	JudgeRuntimeError
 	JudgeMemoryOut
 	JudgeTimeOut
-	JudgeUnknown
 )
 
 func (jr JudgeResultEnum) String() string {
-	switch jr {
-	case JudgeCorrect:
-		return "CORRECT"
-	case JudgeWrong:
-		return "WRONG"
-	case JudgeCompileError:
-		return "COMPILE_ERROR"
-	case JudgeRuntimeError:
-		return "RUNTIME_ERROR"
-	case JudgeMemoryOut:
-		return "MEMORY_OUT"
-	case JudgeTimeOut:
-		return "TIME_OUT"
-	default:
-		return "UNKNOWN"
-	}
+	return map[JudgeResultEnum]string{
+		JudgeUnknown:      "UNKNOWN",
+		JudgeCorrect:      "CORRECT",
+		JudgeWrong:        "WRONG",
+		JudgeCompileError: "COMPILE_ERROR",
+		JudgeRuntimeError: "RUNTIME_ERROR",
+		JudgeMemoryOut:    "MEMORY_OUT",
+		JudgeTimeOut:      "TIME_OUT",
+	}[jr]
 }
