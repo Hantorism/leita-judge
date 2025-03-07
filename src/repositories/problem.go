@@ -38,6 +38,8 @@ func (repository *problemRepository) SaveSubmitResult(dto SaveSubmitResultDAO) e
 
 	if _, err := db.Exec(query, result, usedMemory, usedTime, submitId); err != nil {
 		log.Error(err)
+		return err
 	}
+
 	return nil
 }
