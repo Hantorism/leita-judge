@@ -160,7 +160,7 @@ func printRunProblemInfo(language string, submitId int, problemId int, code []by
 	return nil
 }
 
-func copyTestCases(submitId int, problemId int) error {
+func copyTestCases(submitId, problemId int) error {
 	log.Info("-----------------------")
 	log.Info("테스트 케이스 복사 중...")
 
@@ -174,7 +174,11 @@ func copyTestCases(submitId int, problemId int) error {
 		return err
 	}
 
-	testCaseNum := 1
+	testCaseNum, err := GetTestCaseNum("problem/" + strconv.Itoa(problemId) + "/in/")
+	if err != nil {
+		log.Error(err)
+		return err
+	}
 
 	for i := 0; i < testCaseNum; i++ {
 		srcInputFilePath := "problem/" + strconv.Itoa(problemId) + "/in/" + strconv.Itoa(i) + ".in"
