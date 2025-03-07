@@ -84,18 +84,18 @@ const (
 func (jr JudgeResultEnum) String() string {
 	switch jr {
 	case JudgeCorrect:
-		return "Correct"
+		return "CORRECT"
 	case JudgeWrong:
-		return "Wrong"
+		return "WRONG"
 	case JudgeCompileError:
-		return "CompileError"
+		return "COMPILE_ERROR"
 	case JudgeRuntimeError:
-		return "RuntimeError"
+		return "RUNTIME_ERROR"
 	case JudgeMemoryOut:
-		return "MemoryOut"
+		return "MEMORY_OUT"
 	case JudgeTimeOut:
-		return "TimeOut"
+		return "TIME_OUT"
 	default:
-		return "Unknown"
+		return "UNKNOWN"
 	}
 }
