@@ -12,28 +12,23 @@ import (
 	. "leita/src/utils"
 )
 
-type ProblemService interface {
-	SubmitProblem(dto SubmitProblemDTO) (JudgeResultEnum, error)
-	RunProblem(dto RunProblemDTO) []RunProblemResult
+type ProblemService struct {
+	repository *repositories.ProblemRepository
 }
 
-type problemService struct {
-	repository repositories.ProblemRepository
-}
-
-func NewProblemService() (ProblemService, error) {
+func NewProblemService() (*ProblemService, error) {
 	repository, err := repositories.NewProblemRepository()
 	if err != nil {
 		log.Error(err)
 		return nil, err
 	}
 
-	return &problemService{
+	return &ProblemService{
 		repository: repository,
 	}, nil
 }
 
-func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultEnum, error) {
+func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultEnum, error) {
 	problemId := dto.ProblemId
 	submitId := dto.SubmitId
 	language := dto.Language
@@ -85,7 +80,7 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 	return result, nil
 }
 
-func (service *problemService) RunProblem(dto RunProblemDTO) []RunProblemResult {
+func (service *ProblemService) RunProblem(dto RunProblemDTO) []RunProblemResult {
 	problemId := dto.ProblemId
 	submitId := dto.SubmitId
 	language := dto.Language

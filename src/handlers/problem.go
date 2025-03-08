@@ -12,23 +12,18 @@ import (
 	. "leita/src/utils"
 )
 
-type ProblemHandler interface {
-	SubmitProblem() fiber.Handler
-	RunProblem() fiber.Handler
+type ProblemHandler struct {
+	service *services.ProblemService
 }
 
-type problemHandler struct {
-	service services.ProblemService
-}
-
-func NewProblemHandler() (ProblemHandler, error) {
+func NewProblemHandler() (*ProblemHandler, error) {
 	service, err := services.NewProblemService()
 	if err != nil {
 		log.Error(err)
 		return nil, err
 	}
 
-	return &problemHandler{
+	return &ProblemHandler{
 		service: service,
 	}, nil
 }
@@ -43,7 +38,7 @@ func NewProblemHandler() (ProblemHandler, error) {
 //	@Success	200			{object}	SubmitProblemResponse
 //	@Failure	500			{object}	SubmitProblemResponse
 //	@Router		/problem/submit/{problemId} [post]
-func (handler *problemHandler) SubmitProblem() fiber.Handler {
+func (handler *ProblemHandler) SubmitProblem() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req SubmitProblemRequest
 		if err := c.BodyParser(&req); err != nil {
@@ -109,7 +104,7 @@ func (handler *problemHandler) SubmitProblem() fiber.Handler {
 //	@Success	200			{object}	[]RunProblemResponse
 //	@Failure	500			{object}	[]RunProblemResponse
 //	@Router		/problem/run/{problemId} [post]
-func (handler *problemHandler) RunProblem() fiber.Handler {
+func (handler *ProblemHandler) RunProblem() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req RunProblemRequest
 		if err := c.BodyParser(&req); err != nil {

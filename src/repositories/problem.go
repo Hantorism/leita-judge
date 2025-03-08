@@ -6,27 +6,23 @@ import (
 	. "leita/src/entities"
 )
 
-type ProblemRepository interface {
-	SaveSubmitResult(dto SaveSubmitResultDAO) error
+type ProblemRepository struct {
+	dataSource *dataSources.DataSource
 }
 
-type problemRepository struct {
-	dataSource dataSources.DataSource
-}
-
-func NewProblemRepository() (ProblemRepository, error) {
+func NewProblemRepository() (*ProblemRepository, error) {
 	dataSource, err := dataSources.NewDataSource()
 	if err != nil {
 		log.Error(err)
 		return nil, err
 	}
 
-	return &problemRepository{
+	return &ProblemRepository{
 		dataSource: dataSource,
 	}, nil
 }
 
-func (repository *problemRepository) SaveSubmitResult(dto SaveSubmitResultDAO) error {
+func (repository *ProblemRepository) SaveSubmitResult(dto SaveSubmitResultDAO) error {
 	result := dto.Result
 	usedMemory := dto.UsedMemory
 	usedTime := dto.UsedTime

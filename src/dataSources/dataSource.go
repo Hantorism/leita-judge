@@ -7,17 +7,12 @@ import (
 	"github.com/oracle/oci-go-sdk/v65/identity"
 )
 
-type DataSource interface {
-	GetDatabase() *sql.DB
-	GetObjectStorage() *identity.IdentityClient
-}
-
-type dataSource struct {
+type DataSource struct {
 	Database      *sql.DB
 	ObjectStorage *identity.IdentityClient
 }
 
-func NewDataSource() (DataSource, error) {
+func NewDataSource() (*DataSource, error) {
 	db, err := NewDatabase()
 	if err != nil {
 		log.Error(err)
@@ -29,16 +24,16 @@ func NewDataSource() (DataSource, error) {
 	//	log.Error(err)
 	//}
 
-	return &dataSource{
+	return &DataSource{
 		Database: db,
 		//ObjectStorage: client,
 	}, nil
 }
 
-func (ds *dataSource) GetDatabase() *sql.DB {
+func (ds *DataSource) GetDatabase() *sql.DB {
 	return ds.Database
 }
 
-func (ds *dataSource) GetObjectStorage() *identity.IdentityClient {
+func (ds *DataSource) GetObjectStorage() *identity.IdentityClient {
 	return ds.ObjectStorage
 }
