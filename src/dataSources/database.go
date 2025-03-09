@@ -25,6 +25,7 @@ func getDSN() (string, error) {
 		Port:     os.Getenv("DB_PORT"),
 		Name:     os.Getenv("DB_NAME"),
 	}
+
 	if !AllString(dbConf.User, dbConf.Password, dbConf.Host, dbConf.Port, dbConf.Name) {
 		err := fmt.Errorf("invalid database configuration")
 		log.Error(err)
