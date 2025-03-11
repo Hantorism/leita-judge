@@ -2,6 +2,7 @@ package services
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
@@ -12,28 +13,23 @@ import (
 	. "leita/src/utils"
 )
 
-type ProblemService interface {
-	SubmitProblem(dto SubmitProblemDTO) (JudgeResultEnum, error)
-	RunProblem(dto RunProblemDTO) []RunProblemResult
+type ProblemService struct {
+	repository *repositories.ProblemRepository
 }
 
-type problemService struct {
-	repository repositories.ProblemRepository
-}
-
-func NewProblemService() (ProblemService, error) {
+func NewProblemService() (*ProblemService, error) {
 	repository, err := repositories.NewProblemRepository()
 	if err != nil {
 		log.Error(err)
 		return nil, err
 	}
 
-	return &problemService{
+	return &ProblemService{
 		repository: repository,
 	}, nil
 }
 
-func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultEnum, error) {
+func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultEnum, error) {
 	problemId := dto.ProblemId
 	submitId := dto.SubmitId
 	language := dto.Language
@@ -53,7 +49,7 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 
 	defer func() {
 		saveSubmitResultDAO := SaveSubmitResultDAO{
-			Result: result.String(),
+			Result:     result.String(),
 			UsedMemory: 1,
 			UsedTime:   1,
 			SubmitId:   submitId,
@@ -85,7 +81,7 @@ func (service *problemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 	return result, nil
 }
 
-func (service *problemService) RunProblem(dto RunProblemDTO) []RunProblemResult {
+func (service *ProblemService) RunProblem(dto RunProblemDTO) []RunProblemResult {
 	problemId := dto.ProblemId
 	submitId := dto.SubmitId
 	language := dto.Language
@@ -99,18 +95,18 @@ func (service *problemService) RunProblem(dto RunProblemDTO) []RunProblemResult 
 
 	if err := printRunProblemInfo(language, submitId, problemId, code, testCases); err != nil {
 		log.Error(err)
-		return []RunProblemResult{{result, err}}
+		return []RunProblemResult{{Result: result, Error: err}}
 	}
 
 	if err := saveTestCases(submitId, testCases); err != nil {
 		log.Error(err)
-		return []RunProblemResult{{result, err}}
+		return []RunProblemResult{{Result: result, Error: err}}
 	}
 
 	result, err := buildSource(submitId, language, "run", code, buildCmd)
 	if err != nil {
 		log.Error(err)
-		return []RunProblemResult{{result, err}}
+		return []RunProblemResult{{Result: result, Error: err}}
 	}
 
 	defer func(language string, deleteCmd []string) {
@@ -274,13 +270,15 @@ func buildSource(submitId int, language, judgeType string, code []byte, buildCmd
 		return JudgeCorrect, nil
 	}
 
+	var stderr bytes.Buffer
 	cmd := exec.Command(buildCmd[0], buildCmd[1:]...)
 	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		log.Error(err)
-		return JudgeCompileError, err
+		compileError := fmt.Errorf("\n%w\n%s", err, stderr.String())
+		log.Error(compileError)
+		return JudgeCompileError, compileError
 	}
 
 	log.Info("소스 코드 빌드 완료!")
@@ -339,7 +337,7 @@ func judgeRun(runCmd []string, submitId int, judgeType string) []RunProblemResul
 	testCaseNum, err := GetTestCaseNum(judgeType + "/" + strconv.Itoa(submitId) + "/in/")
 	if err != nil {
 		log.Error(err)
-		return []RunProblemResult{{JudgeUnknown, err}}
+		return []RunProblemResult{{Result: JudgeUnknown, Error: err}}
 	}
 
 	results := make([]RunProblemResult, 0, testCaseNum)
@@ -352,24 +350,27 @@ func judgeRun(runCmd []string, submitId int, judgeType string) []RunProblemResul
 		inputContents, err := os.ReadFile(inputFile)
 		if err != nil {
 			log.Error(err)
-			return []RunProblemResult{{JudgeUnknown, err}}
+			return []RunProblemResult{{Result: JudgeUnknown, Error: err}}
 		}
 
 		result, executeContents, err := executeProgram(runCmd, inputContents)
 		if err != nil {
 			log.Error(err)
-			return []RunProblemResult{{result, err}}
+			return []RunProblemResult{{Result: result, Error: err}}
 		}
 
 		outputFile := judgeType + "/" + strconv.Itoa(submitId) + "/out/" + strconv.Itoa(i) + ".out"
 		outputContents, err := os.ReadFile(outputFile)
 		if err != nil {
 			log.Error(err)
-			return []RunProblemResult{{JudgeUnknown, err}}
+			return []RunProblemResult{{Result: JudgeUnknown, Error: err}}
 		}
 
 		judgeResult := checkDifference(executeContents, outputContents)
-		result = map[bool]JudgeResultEnum{true: JudgeCorrect, false: JudgeWrong}[judgeResult]
+		result = JudgeWrong
+		if judgeResult {
+			result = JudgeCorrect
+		}
 		log.Info(result.String())
 		results = append(results, RunProblemResult{Result: result})
 	}
@@ -390,13 +391,15 @@ func executeProgram(runCmd []string, inputContents []byte) (JudgeResultEnum, []b
 	cmd := exec.Command(runCmd[0], runCmd[1:]...)
 	cmd.Stdin = bytes.NewReader(inputContents)
 
-	outputBuffer := new(bytes.Buffer)
-	cmd.Stdout = outputBuffer
-	cmd.Stderr = os.Stderr
+	var outputBuffer bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &outputBuffer
+	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		log.Error(err)
-		return JudgeRuntimeError, nil, err
+		runtimeError := fmt.Errorf("\n%w\n%s", err, stderr.String())
+		log.Error(runtimeError)
+		return JudgeRuntimeError, nil, runtimeError
 	}
 
 	output := outputBuffer.Bytes()
@@ -427,13 +430,15 @@ func deleteProgram(language string, deleteCmd []string) error {
 		return nil
 	}
 
+	var stderr bytes.Buffer
 	cmd := exec.Command(deleteCmd[0], deleteCmd[1:]...)
 	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		log.Error(err)
-		return err
+		deleteError := fmt.Errorf("\n%w\n%s", err, stderr.String())
+		log.Error(deleteError)
+		return deleteError
 	}
 
 	log.Info("실행 파일 삭제 완료!")

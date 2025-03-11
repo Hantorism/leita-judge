@@ -19,8 +19,7 @@ func CopyFile(srcFilePath, dstFilePath string) error {
 		return err
 	}
 	defer func(src *os.File) {
-		err = src.Close()
-		if err != nil {
+		if err = src.Close(); err != nil {
 			log.Error(err)
 		}
 	}(src)
@@ -31,13 +30,16 @@ func CopyFile(srcFilePath, dstFilePath string) error {
 		return err
 	}
 	defer func(dst *os.File) {
-		err = dst.Close()
-		if err != nil {
+		if err = dst.Close(); err != nil {
 			log.Error(err)
 		}
 	}(dst)
 
-	_, _ = io.Copy(dst, src)
+	if _, err = io.Copy(dst, src); err != nil {
+		log.Error(err)
+		return err
+	}
+
 	return nil
 }
 
