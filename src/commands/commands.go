@@ -24,12 +24,12 @@ var Commands = map[string]Command{
 	},
 	"PYTHON": {
 		BuildCmd:  []string{},
-		RunCmd: []string{"python3", "-W", "ignore", "{JUDGE_TYPE}/{SUBMIT_ID}/Main.py"},
+		RunCmd:    []string{"python3", "-W", "ignore", "{JUDGE_TYPE}/{SUBMIT_ID}/Main.py"},
 		DeleteCmd: []string{},
 	},
 	"JAVASCRIPT": {
 		BuildCmd:  []string{},
-		RunCmd: []string{"node", "--stack-size=65536", "{JUDGE_TYPE}/{SUBMIT_ID}/Main.js"},
+		RunCmd:    []string{"node", "--stack-size=65536", "{JUDGE_TYPE}/{SUBMIT_ID}/Main.js"},
 		DeleteCmd: []string{},
 	},
 	"GO": {

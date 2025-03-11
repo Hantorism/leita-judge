@@ -8,7 +8,7 @@ type SubmitProblemRequest struct {
 
 type SubmitProblemResponse struct {
 	IsSuccessful bool   `json:"isSuccessful"`
-	Result string `json:"result"`
+	Result       string `json:"result"`
 	Error        string `json:"error"`
 }
 

@@ -44,7 +44,7 @@ func (handler *ProblemHandler) SubmitProblem() fiber.Handler {
 		if err := c.BodyParser(&req); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(SubmitProblemResponse{
 				IsSuccessful: false,
-				Result: "",
+				Result:       "",
 				Error:        err.Error(),
 			})
 		}
@@ -81,14 +81,14 @@ func (handler *ProblemHandler) SubmitProblem() fiber.Handler {
 			log.Error(err)
 			return c.Status(fiber.StatusInternalServerError).JSON(SubmitProblemResponse{
 				IsSuccessful: false,
-				Result: result.String(),
+				Result:       result.String(),
 				Error:        err.Error(),
 			})
 		}
 
 		return c.Status(fiber.StatusOK).JSON(SubmitProblemResponse{
 			IsSuccessful: true,
-			Result: result.String(),
+			Result:       result.String(),
 			Error:        "",
 		})
 	}

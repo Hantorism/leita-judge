@@ -49,7 +49,7 @@ func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 
 	defer func() {
 		saveSubmitResultDAO := SaveSubmitResultDAO{
-			Result: result.String(),
+			Result:     result.String(),
 			UsedMemory: 1,
 			UsedTime:   1,
 			SubmitId:   submitId,
