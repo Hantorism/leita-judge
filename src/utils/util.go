@@ -2,7 +2,6 @@ package utils
 
 import (
 	"encoding/base64"
-	"io"
 	"math/rand"
 	"os"
 	"strconv"
@@ -12,36 +11,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func CopyFile(srcFilePath, dstFilePath string) error {
-	src, err := os.Open(srcFilePath)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	defer func(src *os.File) {
-		if err = src.Close(); err != nil {
-			log.Error(err)
-		}
-	}(src)
-
-	dst, err := os.Create(dstFilePath)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	defer func(dst *os.File) {
-		if err = dst.Close(); err != nil {
-			log.Error(err)
-		}
-	}(dst)
-
-	if _, err = io.Copy(dst, src); err != nil {
-		log.Error(err)
-		return err
-	}
-
-	return nil
-}
+var envMap = make(map[string]string)
 
 func Decode(encodedString string) ([]byte, error) {
 	decodedBytes, err := base64.StdEncoding.DecodeString(encodedString)
@@ -92,7 +62,22 @@ func LoadEnv() error {
 		return err
 	}
 
+	for _, env := range os.Environ() {
+		parts := strings.SplitN(env, "=", 2)
+		if len(parts) == 2 {
+			envMap[parts[0]] = parts[1]
+		}
+	}
+
 	return nil
+}
+
+func GetEnv(key string) string {
+	if value, exists := envMap[key]; exists {
+		return value
+	}
+
+	return ""
 }
 
 func MakeDir(path string) error {

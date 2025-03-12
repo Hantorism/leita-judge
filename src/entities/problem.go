@@ -92,3 +92,8 @@ func (jr JudgeResultEnum) String() string {
 		JudgeTimeOut:      "TIME_OUT",
 	}[jr]
 }
+
+type ObjectContent struct {
+	Name    string
+	Content []byte
+}

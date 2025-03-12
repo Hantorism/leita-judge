@@ -4,12 +4,11 @@ import (
 	"database/sql"
 
 	"github.com/gofiber/fiber/v2/log"
-	"github.com/oracle/oci-go-sdk/v65/identity"
 )
 
 type DataSource struct {
-	Database      *sql.DB
-	ObjectStorage *identity.IdentityClient
+	database      *sql.DB
+	objectStorage *ObjectStorage
 }
 
 func NewDataSource() (*DataSource, error) {
@@ -19,21 +18,22 @@ func NewDataSource() (*DataSource, error) {
 		return nil, err
 	}
 
-	//client, err := NewObjectStorage()
-	//if err != nil {
-	//	log.Error(err)
-	//}
+	os, err := NewObjectStorage()
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
 
 	return &DataSource{
-		Database: db,
-		//ObjectStorage: client,
+		database:      db,
+		objectStorage: os,
 	}, nil
 }
 
 func (ds *DataSource) GetDatabase() *sql.DB {
-	return ds.Database
+	return ds.database
 }
 
-func (ds *DataSource) GetObjectStorage() *identity.IdentityClient {
-	return ds.ObjectStorage
+func (ds *DataSource) GetObjectStorage() *ObjectStorage {
+	return ds.objectStorage
 }
