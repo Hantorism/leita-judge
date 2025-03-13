@@ -376,7 +376,6 @@ func judgeRun(runCmd []string, submitId int, judgeType string) []RunProblemResul
 		if judgeResult {
 			result = JudgeCorrect
 		}
-		log.Info(result.String())
 		results = append(results, RunProblemResult{Result: result})
 	}
 
