@@ -21,6 +21,7 @@ RUN apk update && apk add bash && \
 
 WORKDIR /workspace
 COPY .env .
+COPY ~/.oci ~/.oci
 COPY --from=build /workspace/server .
 COPY --from=build /workspace/docs ./docs
 CMD ./server
