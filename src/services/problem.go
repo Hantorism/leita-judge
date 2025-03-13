@@ -42,10 +42,17 @@ func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 
 	printSubmitProblemInfo(language, submitId, problemId, code)
 
-	if err := copyTestCases(submitId, problemId); err != nil {
+	if err := saveSubmitTestCases(service, submitId, problemId); err != nil {
 		log.Error(err)
 		return result, err
 	}
+
+	defer func() {
+		path := "submits/" + strconv.Itoa(submitId) + "/Main." + FileExtension(language)
+		if err := saveCode(service, path, code); err != nil {
+			log.Error(err)
+		}
+	}()
 
 	defer func() {
 		saveSubmitResultDAO := SaveSubmitResultDAO{
@@ -98,7 +105,7 @@ func (service *ProblemService) RunProblem(dto RunProblemDTO) []RunProblemResult 
 		return []RunProblemResult{{Result: result, Error: err}}
 	}
 
-	if err := saveTestCases(submitId, testCases); err != nil {
+	if err := saveRunTestCases(submitId, testCases); err != nil {
 		log.Error(err)
 		return []RunProblemResult{{Result: result, Error: err}}
 	}
@@ -158,9 +165,9 @@ func printRunProblemInfo(language string, submitId int, problemId int, code []by
 	return nil
 }
 
-func copyTestCases(submitId, problemId int) error {
+func saveSubmitTestCases(service *ProblemService, submitId, problemId int) error {
 	log.Info("-----------------------")
-	log.Info("테스트 케이스 복사 중...")
+	log.Info("테스트 케이스 저장 중...")
 
 	if err := MakeDir("submit/" + strconv.Itoa(submitId) + "/in/"); err != nil {
 		log.Error(err)
@@ -172,34 +179,36 @@ func copyTestCases(submitId, problemId int) error {
 		return err
 	}
 
-	testCaseNum, err := GetTestCaseNum("problem/" + strconv.Itoa(problemId) + "/in/")
+	testCases, err := service.repository.GetObjectsInFolder("testcases/" + strconv.Itoa(problemId))
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	for i := 0; i < testCaseNum; i++ {
-		srcInputFilePath := "problem/" + strconv.Itoa(problemId) + "/in/" + strconv.Itoa(i) + ".in"
-		dstInputFilePath := "submit/" + strconv.Itoa(submitId) + "/in/" + strconv.Itoa(i) + ".in"
-		srcOutputFilePath := "problem/" + strconv.Itoa(problemId) + "/out/" + strconv.Itoa(i) + ".out"
-		dstOutputFilePath := "submit/" + strconv.Itoa(submitId) + "/out/" + strconv.Itoa(i) + ".out"
+	testCaseNum := len(testCases) / 2
+	inputTestCases := testCases[:testCaseNum]
+	outputTestCases := testCases[testCaseNum:]
 
-		if err = CopyFile(srcInputFilePath, dstInputFilePath); err != nil {
+	for i := 0; i < testCaseNum; i++ {
+		inputFilePath := "submit/" + strconv.Itoa(submitId) + "/in/" + strconv.Itoa(i) + ".in"
+		outputFilePath := "submit/" + strconv.Itoa(submitId) + "/out/" + strconv.Itoa(i) + ".out"
+
+		if err = os.WriteFile(inputFilePath, inputTestCases[i].Content, 0644); err != nil {
 			log.Error(err)
 			return err
 		}
 
-		if err = CopyFile(srcOutputFilePath, dstOutputFilePath); err != nil {
+		if err = os.WriteFile(outputFilePath, outputTestCases[i].Content, 0644); err != nil {
 			log.Error(err)
 			return err
 		}
 	}
 
-	log.Info("테스트 케이스 복사 완료!")
+	log.Info("테스트 케이스 저장 완료!")
 	return nil
 }
 
-func saveTestCases(submitId int, testCases []TestCase) error {
+func saveRunTestCases(submitId int, testCases []TestCase) error {
 	log.Info("-----------------------")
 	log.Info("테스트 케이스 저장 중...")
 
@@ -221,6 +230,7 @@ func saveTestCases(submitId int, testCases []TestCase) error {
 			return err
 		}
 		if err = os.WriteFile(inputFilePath, inputContents, 0644); err != nil {
+			log.Error(err)
 			return err
 		}
 
@@ -231,6 +241,7 @@ func saveTestCases(submitId int, testCases []TestCase) error {
 			return err
 		}
 		if err = os.WriteFile(outputFilePath, outputContents, 0644); err != nil {
+			log.Error(err)
 			return err
 		}
 	}
@@ -250,6 +261,7 @@ func saveSourceCode(submitId int, code []byte, language, judgeType string) error
 
 	inputFilePath := judgeType + "/" + strconv.Itoa(submitId) + "/Main." + FileExtension(language)
 	if err := os.WriteFile(inputFilePath, code, 0644); err != nil {
+		log.Error(err)
 		return err
 	}
 
@@ -371,7 +383,6 @@ func judgeRun(runCmd []string, submitId int, judgeType string) []RunProblemResul
 		if judgeResult {
 			result = JudgeCorrect
 		}
-		log.Info(result.String())
 		results = append(results, RunProblemResult{Result: result})
 	}
 
@@ -442,5 +453,18 @@ func deleteProgram(language string, deleteCmd []string) error {
 	}
 
 	log.Info("실행 파일 삭제 완료!")
+	return nil
+}
+
+func saveCode(service *ProblemService, path string, code []byte) error {
+	log.Info("-----------------------")
+	log.Info("오브젝트 스토리지에 제출 코드 저장 중...")
+
+	if err := service.repository.SaveCode(path, code); err != nil {
+		log.Error(err)
+		return err
+	}
+
+	log.Info("오브젝트 스토리지에 제출 코드 저장 완료!")
 	return nil
 }

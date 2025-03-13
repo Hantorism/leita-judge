@@ -39,3 +39,38 @@ func (repository *ProblemRepository) SaveSubmitResult(dto SaveSubmitResultDAO) e
 
 	return nil
 }
+
+func (repository *ProblemRepository) SaveCode(path string, code []byte) error {
+	os := repository.dataSource.GetObjectStorage()
+	if err := os.PutObject(path, code); err != nil {
+		log.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (repository *ProblemRepository) GetObjectsInFolder(folderPath string) ([]ObjectContent, error) {
+	os := repository.dataSource.GetObjectStorage()
+	objects, err := os.ListObjects(folderPath)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+
+	contents := make([]ObjectContent, 0)
+	for _, object := range objects {
+		content, err := os.GetObject(*object.Name)
+		if err != nil {
+			log.Error(err)
+			return nil, err
+		}
+
+		contents = append(contents, ObjectContent{
+			Name:    *object.Name,
+			Content: content,
+		})
+	}
+
+	return contents, nil
+}
