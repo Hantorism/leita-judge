@@ -45,6 +45,16 @@ func (repository *ProblemRepository) SaveSubmitResult(dto SaveSubmitResultDAO) e
 	return nil
 }
 
+func (repository *ProblemRepository) SaveCode(path string, code []byte) error {
+	os := repository.dataSource.GetObjectStorage()
+	if err := os.PutObject(path, code); err != nil {
+		log.Error(err)
+		return err
+	}
+
+	return nil
+}
+
 func (repository *ProblemRepository) GetObjectsInFolder(folderPath string) ([]ObjectContent, error) {
 	request := objectstorage.ListObjectsRequest{
 		NamespaceName: common.String(GetEnv("OS_NAMESPACE")),

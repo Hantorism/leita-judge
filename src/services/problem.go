@@ -48,6 +48,13 @@ func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 	}
 
 	defer func() {
+		path := "submits/" + strconv.Itoa(submitId) + "/Main." + FileExtension(language)
+		if err := saveCode(service, path, code); err != nil {
+			log.Error(err)
+		}
+	}()
+
+	defer func() {
 		saveSubmitResultDAO := SaveSubmitResultDAO{
 			Result:     result.String(),
 			UsedMemory: 1,
@@ -446,5 +453,18 @@ func deleteProgram(language string, deleteCmd []string) error {
 	}
 
 	log.Info("실행 파일 삭제 완료!")
+	return nil
+}
+
+func saveCode(service *ProblemService, path string, code []byte) error {
+	log.Info("-----------------------")
+	log.Info("오브젝트 스토리지에 제출 코드 저장 중...")
+
+	if err := service.repository.SaveCode(path, code); err != nil {
+		log.Error(err)
+		return err
+	}
+
+	log.Info("오브젝트 스토리지에 제출 코드 저장 완료!")
 	return nil
 }
