@@ -40,7 +40,6 @@ func (os *ObjectStorage) GetObject(objectName string) ([]byte, error) {
 		log.Error(err)
 		return nil, err
 	}
-	defer response.Content.Close()
 
 	content, err := io.ReadAll(response.Content)
 	if err != nil {
@@ -66,4 +65,20 @@ func (os *ObjectStorage) PutObject(objectName string, data []byte) error {
 	}
 
 	return nil
+}
+
+func (os *ObjectStorage) ListObjects(folderPath string) ([]objectstorage.ObjectSummary, error) {
+	request := objectstorage.ListObjectsRequest{
+		NamespaceName: common.String(GetEnv("OS_NAMESPACE")),
+		BucketName:    common.String(GetEnv("OS_BUCKET")),
+		Prefix:        common.String(folderPath),
+	}
+
+	response, err := os.Client.ListObjects(context.Background(), request)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+
+	return response.ListObjects.Objects, nil
 }
