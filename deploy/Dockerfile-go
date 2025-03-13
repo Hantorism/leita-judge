@@ -15,5 +15,5 @@ COPY .env .
 COPY .oci ~/.oci
 COPY --from=build /workspace/server .
 COPY --from=build /workspace/docs ./docs
-CMD ./server
+CMD sleep infinity
 EXPOSE 1323
