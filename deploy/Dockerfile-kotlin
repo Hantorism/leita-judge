@@ -20,9 +20,9 @@ RUN apk update && apk add bash && \
     export PATH=$PATH:/usr/lib/kotlinc/bin
 
 WORKDIR /workspace
-COPY .env .
 COPY .oci /root/.oci
+COPY .env .
 COPY --from=build /workspace/server .
 COPY --from=build /workspace/docs ./docs
-CMD sleep infinity
+CMD ./server
 EXPOSE 1323
