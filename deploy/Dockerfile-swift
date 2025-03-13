@@ -13,6 +13,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o server .
 FROM swift AS run
 WORKDIR /workspace
 COPY .env .
+COPY ~/.oci ~/.oci
 COPY --from=build /workspace/server .
 COPY --from=build /workspace/docs ./docs
 CMD ./server
