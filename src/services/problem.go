@@ -51,6 +51,7 @@ func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 		path := "submits/" + strconv.Itoa(submitId) + "/Main." + FileExtension(language)
 		if err := saveCode(service, path, code); err != nil {
 			log.Error(err)
+			return
 		}
 	}()
 
@@ -62,9 +63,13 @@ func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 			SubmitId:   submitId,
 		}
 
+		log.Info("-----------------------")
+		log.Info("데이터베이스에 채점 결과 저장 중...")
 		if err := service.repository.SaveSubmitResult(saveSubmitResultDAO); err != nil {
 			log.Error(err)
+			return
 		}
+		log.Info("데이터베이스에 채점 결과 저장 완료!")
 	}()
 
 	result, err := buildSource(submitId, language, "submit", code, buildCmd)
@@ -76,6 +81,7 @@ func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 	defer func(language string, deleteCmd []string) {
 		if err = deleteProgram(language, deleteCmd); err != nil {
 			log.Error(err)
+			return
 		}
 	}(language, deleteCmd)
 
@@ -119,6 +125,7 @@ func (service *ProblemService) RunProblem(dto RunProblemDTO) []RunProblemResult 
 	defer func(language string, deleteCmd []string) {
 		if err = deleteProgram(language, deleteCmd); err != nil {
 			log.Error(err)
+			return
 		}
 	}(language, deleteCmd)
 
