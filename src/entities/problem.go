@@ -7,8 +7,8 @@ type SubmitProblemRequest struct {
 }
 
 type SubmitProblemResponse struct {
-	Result       string `json:"result"`
-	Error        string `json:"error"`
+	Result string `json:"result"`
+	Error  string `json:"error"`
 }
 
 type SubmitProblemDTO struct {
@@ -35,8 +35,8 @@ type RunProblemRequest struct {
 }
 
 type RunProblemResponse struct {
-	Result       string `json:"result"`
-	Error        string `json:"error"`
+	Result string `json:"result"`
+	Error  string `json:"error"`
 }
 
 type TestCase struct {
