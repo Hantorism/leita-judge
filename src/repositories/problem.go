@@ -30,7 +30,7 @@ func (repository *ProblemRepository) SaveSubmitResult(dto SaveSubmitResultDAO) e
 
 	db := repository.dataSource.GetDatabase()
 
-	query := "UPDATE submits SET result = ?, used_memory = ?, used_time = ? WHERE id = ?;"
+	query := "UPDATE judge SET result = ?, used_memory = ?, used_time = ? WHERE id = ?;"
 
 	if _, err := db.Exec(query, result, usedMemory, usedTime, submitId); err != nil {
 		log.Error(err)
