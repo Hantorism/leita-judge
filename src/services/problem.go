@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2/log"
@@ -48,9 +49,10 @@ func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 	}
 
 	defer func() {
-		path := "submits/" + strconv.Itoa(submitId) + "/Main." + FileExtension(language)
+		path := filepath.Join("submits", strconv.Itoa(submitId), "Main."+FileExtension(language))
 		if err := saveCode(service, path, code); err != nil {
 			log.Error(err)
+			return
 		}
 	}()
 
@@ -62,9 +64,13 @@ func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 			SubmitId:   submitId,
 		}
 
+		log.Info("-----------------------")
+		log.Info("데이터베이스에 채점 결과 저장 중...")
 		if err := service.repository.SaveSubmitResult(saveSubmitResultDAO); err != nil {
 			log.Error(err)
+			return
 		}
+		log.Info("데이터베이스에 채점 결과 저장 완료!")
 	}()
 
 	result, err := buildSource(submitId, language, "submit", code, buildCmd)
@@ -76,6 +82,7 @@ func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 	defer func(language string, deleteCmd []string) {
 		if err = deleteProgram(language, deleteCmd); err != nil {
 			log.Error(err)
+			return
 		}
 	}(language, deleteCmd)
 
@@ -119,6 +126,7 @@ func (service *ProblemService) RunProblem(dto RunProblemDTO) []RunProblemResult 
 	defer func(language string, deleteCmd []string) {
 		if err = deleteProgram(language, deleteCmd); err != nil {
 			log.Error(err)
+			return
 		}
 	}(language, deleteCmd)
 
@@ -169,17 +177,17 @@ func saveSubmitTestCases(service *ProblemService, submitId, problemId int) error
 	log.Info("-----------------------")
 	log.Info("테스트 케이스 저장 중...")
 
-	if err := MakeDir("submit/" + strconv.Itoa(submitId) + "/in/"); err != nil {
+	if err := MakeDir(filepath.Join("submit", strconv.Itoa(submitId), "in")); err != nil {
 		log.Error(err)
 		return err
 	}
 
-	if err := MakeDir("submit/" + strconv.Itoa(submitId) + "/out/"); err != nil {
+	if err := MakeDir(filepath.Join("submit", strconv.Itoa(submitId), "out")); err != nil {
 		log.Error(err)
 		return err
 	}
 
-	testCases, err := service.repository.GetObjectsInFolder("testcases/" + strconv.Itoa(problemId))
+	testCases, err := service.repository.GetObjectsInFolder(filepath.Join("testcases", strconv.Itoa(problemId)))
 	if err != nil {
 		log.Error(err)
 		return err
@@ -190,14 +198,13 @@ func saveSubmitTestCases(service *ProblemService, submitId, problemId int) error
 	outputTestCases := testCases[testCaseNum:]
 
 	for i := 0; i < testCaseNum; i++ {
-		inputFilePath := "submit/" + strconv.Itoa(submitId) + "/in/" + strconv.Itoa(i) + ".in"
-		outputFilePath := "submit/" + strconv.Itoa(submitId) + "/out/" + strconv.Itoa(i) + ".out"
-
+		inputFilePath := filepath.Join("submit", strconv.Itoa(submitId), "in", strconv.Itoa(i)+".in")
 		if err = os.WriteFile(inputFilePath, inputTestCases[i].Content, 0644); err != nil {
 			log.Error(err)
 			return err
 		}
 
+		outputFilePath := filepath.Join("submit", strconv.Itoa(submitId), "out", strconv.Itoa(i)+".out")
 		if err = os.WriteFile(outputFilePath, outputTestCases[i].Content, 0644); err != nil {
 			log.Error(err)
 			return err
@@ -212,34 +219,34 @@ func saveRunTestCases(submitId int, testCases []TestCase) error {
 	log.Info("-----------------------")
 	log.Info("테스트 케이스 저장 중...")
 
-	if err := MakeDir("run/" + strconv.Itoa(submitId) + "/in/"); err != nil {
+	if err := MakeDir(filepath.Join("run", strconv.Itoa(submitId), "in")); err != nil {
 		log.Error(err)
 		return err
 	}
 
-	if err := MakeDir("run/" + strconv.Itoa(submitId) + "/out/"); err != nil {
+	if err := MakeDir(filepath.Join("run", strconv.Itoa(submitId), "out")); err != nil {
 		log.Error(err)
 		return err
 	}
 
 	for i, testCase := range testCases {
-		inputFilePath := "run/" + strconv.Itoa(submitId) + "/in/" + strconv.Itoa(i) + ".in"
 		inputContents, err := Decode(testCase.Input)
 		if err != nil {
 			log.Error(err)
 			return err
 		}
+		inputFilePath := filepath.Join("run", strconv.Itoa(submitId), "in", strconv.Itoa(i)+".in")
 		if err = os.WriteFile(inputFilePath, inputContents, 0644); err != nil {
 			log.Error(err)
 			return err
 		}
 
-		outputFilePath := "run/" + strconv.Itoa(submitId) + "/out/" + strconv.Itoa(i) + ".out"
 		outputContents, err := Decode(testCase.Output)
 		if err != nil {
 			log.Error(err)
 			return err
 		}
+		outputFilePath := filepath.Join("run", strconv.Itoa(submitId), "out", strconv.Itoa(i)+".out")
 		if err = os.WriteFile(outputFilePath, outputContents, 0644); err != nil {
 			log.Error(err)
 			return err
@@ -254,12 +261,12 @@ func saveSourceCode(submitId int, code []byte, language, judgeType string) error
 	log.Info("-----------------------")
 	log.Info("소스 코드 저장 중...")
 
-	if err := MakeDir(judgeType + "/" + strconv.Itoa(submitId) + "/"); err != nil {
+	if err := MakeDir(filepath.Join(judgeType, strconv.Itoa(submitId))); err != nil {
 		log.Error(err)
 		return err
 	}
 
-	inputFilePath := judgeType + "/" + strconv.Itoa(submitId) + "/Main." + FileExtension(language)
+	inputFilePath := filepath.Join(judgeType, strconv.Itoa(submitId), "Main."+FileExtension(language))
 	if err := os.WriteFile(inputFilePath, code, 0644); err != nil {
 		log.Error(err)
 		return err
@@ -298,7 +305,7 @@ func buildSource(submitId int, language, judgeType string, code []byte, buildCmd
 }
 
 func judgeSubmit(runCmd []string, submitId int, judgeType string) (JudgeResultEnum, error) {
-	testCaseNum, err := GetTestCaseNum(judgeType + "/" + strconv.Itoa(submitId) + "/in/")
+	testCaseNum, err := GetTestCaseNum(filepath.Join(judgeType, strconv.Itoa(submitId), "in"))
 	if err != nil {
 		log.Error(err)
 		return JudgeUnknown, err
@@ -310,8 +317,7 @@ func judgeSubmit(runCmd []string, submitId int, judgeType string) (JudgeResultEn
 		log.Info("-----------------------")
 		log.Info(i+1, "번째 테스트케이스 실행")
 
-		inputFile := judgeType + "/" + strconv.Itoa(submitId) + "/in/" + strconv.Itoa(i) + ".in"
-		inputContents, err := os.ReadFile(inputFile)
+		inputContents, err := os.ReadFile(filepath.Join(judgeType, strconv.Itoa(submitId), "in", strconv.Itoa(i)+".in"))
 		if err != nil {
 			log.Error(err)
 			return JudgeUnknown, err
@@ -323,8 +329,7 @@ func judgeSubmit(runCmd []string, submitId int, judgeType string) (JudgeResultEn
 			return result, err
 		}
 
-		outputFile := judgeType + "/" + strconv.Itoa(submitId) + "/out/" + strconv.Itoa(i) + ".out"
-		outputContents, err := os.ReadFile(outputFile)
+		outputContents, err := os.ReadFile(filepath.Join(judgeType, strconv.Itoa(submitId), "out", strconv.Itoa(i)+".out"))
 		if err != nil {
 			log.Error(err)
 			return JudgeUnknown, err
@@ -346,7 +351,7 @@ func judgeSubmit(runCmd []string, submitId int, judgeType string) (JudgeResultEn
 }
 
 func judgeRun(runCmd []string, submitId int, judgeType string) []RunProblemResult {
-	testCaseNum, err := GetTestCaseNum(judgeType + "/" + strconv.Itoa(submitId) + "/in/")
+	testCaseNum, err := GetTestCaseNum(filepath.Join(judgeType, strconv.Itoa(submitId), "in"))
 	if err != nil {
 		log.Error(err)
 		return []RunProblemResult{{Result: JudgeUnknown, Error: err}}
@@ -358,8 +363,7 @@ func judgeRun(runCmd []string, submitId int, judgeType string) []RunProblemResul
 		log.Info("-----------------------")
 		log.Info(i+1, "번째 테스트케이스 실행")
 
-		inputFile := judgeType + "/" + strconv.Itoa(submitId) + "/in/" + strconv.Itoa(i) + ".in"
-		inputContents, err := os.ReadFile(inputFile)
+		inputContents, err := os.ReadFile(filepath.Join(judgeType, strconv.Itoa(submitId), "in", strconv.Itoa(i)+".in"))
 		if err != nil {
 			log.Error(err)
 			return []RunProblemResult{{Result: JudgeUnknown, Error: err}}
@@ -371,8 +375,7 @@ func judgeRun(runCmd []string, submitId int, judgeType string) []RunProblemResul
 			return []RunProblemResult{{Result: result, Error: err}}
 		}
 
-		outputFile := judgeType + "/" + strconv.Itoa(submitId) + "/out/" + strconv.Itoa(i) + ".out"
-		outputContents, err := os.ReadFile(outputFile)
+		outputContents, err := os.ReadFile(filepath.Join(judgeType, strconv.Itoa(submitId), "out", strconv.Itoa(i)+".out"))
 		if err != nil {
 			log.Error(err)
 			return []RunProblemResult{{Result: JudgeUnknown, Error: err}}

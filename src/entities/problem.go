@@ -7,9 +7,8 @@ type SubmitProblemRequest struct {
 }
 
 type SubmitProblemResponse struct {
-	IsSuccessful bool   `json:"isSuccessful"`
-	Result       string `json:"result"`
-	Error        string `json:"error"`
+	Result string `json:"result"`
+	Error  string `json:"error"`
 }
 
 type SubmitProblemDTO struct {
@@ -36,9 +35,8 @@ type RunProblemRequest struct {
 }
 
 type RunProblemResponse struct {
-	IsSuccessful bool   `json:"isSuccessful"`
-	Result       string `json:"result"`
-	Error        string `json:"error"`
+	Result string `json:"result"`
+	Error  string `json:"error"`
 }
 
 type TestCase struct {
@@ -55,13 +53,6 @@ type RunProblemDTO struct {
 	BuildCmd  []string
 	RunCmd    []string
 	DeleteCmd []string
-}
-
-type SaveRunResultDAO struct {
-	SubmitId   int
-	Result     string
-	UsedMemory int
-	UsedTime   int
 }
 
 type RunProblemResult struct {

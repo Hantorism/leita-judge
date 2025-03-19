@@ -43,22 +43,27 @@ func (handler *ProblemHandler) SubmitProblem() fiber.Handler {
 		var req SubmitProblemRequest
 		if err := c.BodyParser(&req); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(SubmitProblemResponse{
-				IsSuccessful: false,
-				Result:       "",
-				Error:        err.Error(),
+				Result: "",
+				Error:  err.Error(),
 			})
 		}
 
-		problemId, _ := strconv.Atoi(c.Params("problemId"))
+		problemId, err := strconv.Atoi(c.Params("problemId"))
+		if err != nil {
+			log.Error(err)
+			return c.Status(fiber.StatusInternalServerError).JSON(SubmitProblemResponse{
+				Result: "",
+				Error:  err.Error(),
+			})
+		}
 		submitId := req.SubmitId
 		language := req.Language
 		code, err := Decode(req.Code)
 		if err != nil {
 			log.Error(err)
 			return c.Status(fiber.StatusInternalServerError).JSON(SubmitProblemResponse{
-				IsSuccessful: false,
-				Result:       "",
-				Error:        err.Error(),
+				Result: "",
+				Error:  err.Error(),
 			})
 		}
 		command := Commands[language]
@@ -80,16 +85,14 @@ func (handler *ProblemHandler) SubmitProblem() fiber.Handler {
 		if err != nil {
 			log.Error(err)
 			return c.Status(fiber.StatusInternalServerError).JSON(SubmitProblemResponse{
-				IsSuccessful: false,
-				Result:       result.String(),
-				Error:        err.Error(),
+				Result: result.String(),
+				Error:  err.Error(),
 			})
 		}
 
 		return c.Status(fiber.StatusOK).JSON(SubmitProblemResponse{
-			IsSuccessful: true,
-			Result:       result.String(),
-			Error:        "",
+			Result: result.String(),
+			Error:  "",
 		})
 	}
 }
@@ -110,23 +113,30 @@ func (handler *ProblemHandler) RunProblem() fiber.Handler {
 		if err := c.BodyParser(&req); err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON([]RunProblemResponse{
 				{
-					IsSuccessful: false,
-					Result:       "",
-					Error:        err.Error(),
+					Result: "",
+					Error:  err.Error(),
 				},
 			})
 		}
 
-		problemId, _ := strconv.Atoi(c.Params("problemId"))
+		problemId, err := strconv.Atoi(c.Params("problemId"))
+		if err != nil {
+			log.Error(err)
+			return c.Status(fiber.StatusInternalServerError).JSON([]SubmitProblemResponse{
+				{
+					Result: "",
+					Error:  err.Error(),
+				},
+			})
+		}
 		language := req.Language
 		code, err := Decode(req.Code)
 		if err != nil {
 			log.Error(err)
 			return c.Status(fiber.StatusInternalServerError).JSON([]RunProblemResponse{
 				{
-					IsSuccessful: false,
-					Result:       "",
-					Error:        err.Error(),
+					Result: "",
+					Error:  err.Error(),
 				},
 			})
 		}
@@ -152,15 +162,13 @@ func (handler *ProblemHandler) RunProblem() fiber.Handler {
 
 		responses := make([]RunProblemResponse, 0, len(results))
 		for _, result := range results {
+			errStr := ""
+			if result.Error != nil {
+				errStr = result.Error.Error()
+			}
 			responses = append(responses, RunProblemResponse{
-				IsSuccessful: result.Result == JudgeCorrect || result.Result == JudgeWrong,
-				Result:       result.Result.String(),
-				Error: func() string {
-					if result.Error != nil {
-						return result.Error.Error()
-					}
-					return ""
-				}(),
+				Result: result.Result.String(),
+				Error:  errStr,
 			})
 		}
 
