@@ -82,17 +82,21 @@ func (handler *ProblemHandler) SubmitProblem() fiber.Handler {
 		}
 
 		result, err := handler.service.SubmitProblem(submitProblemDTO)
-		if err != nil {
+		if result == JudgeUnknown {
 			log.Error(err)
 			return c.Status(fiber.StatusInternalServerError).JSON(SubmitProblemResponse{
-				Result: result.String(),
+				Result: JudgeUnknown.String(),
 				Error:  err.Error(),
 			})
 		}
 
+		errMsg := ""
+		if err != nil {
+			errMsg = err.Error()
+		}
 		return c.Status(fiber.StatusOK).JSON(SubmitProblemResponse{
 			Result: result.String(),
-			Error:  "",
+			Error: errMsg,
 		})
 	}
 }
@@ -162,13 +166,13 @@ func (handler *ProblemHandler) RunProblem() fiber.Handler {
 
 		responses := make([]RunProblemResponse, 0, len(results))
 		for _, result := range results {
-			errStr := ""
+			errMsg := ""
 			if result.Error != nil {
-				errStr = result.Error.Error()
+				errMsg = result.Error.Error()
 			}
 			responses = append(responses, RunProblemResponse{
 				Result: result.Result.String(),
-				Error:  errStr,
+				Error: errMsg,
 			})
 		}
 

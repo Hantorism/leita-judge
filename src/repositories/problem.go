@@ -22,7 +22,22 @@ func NewProblemRepository() (*ProblemRepository, error) {
 	}, nil
 }
 
-func (repository *ProblemRepository) SaveSubmitResult(dto SaveSubmitResultDAO) error {
+func (repository *ProblemRepository) GetProblemInfo(problemId int) (GetProblemInfoDTO, error) {
+	db := repository.dataSource.GetDatabase()
+
+	query := "SELECT limit_time, limit_memory FROM problem WHERE id = ?;"
+	row := db.QueryRow(query, problemId)
+
+	var dto GetProblemInfoDTO
+	if err := row.Scan(&dto.TimeLimit, &dto.MemoryLimit); err != nil {
+		log.Error(err)
+		return GetProblemInfoDTO{}, err
+	}
+
+	return dto, nil
+}
+
+func (repository *ProblemRepository) SaveSubmitResult(dto SaveSubmitResultDTO) error {
 	result := dto.Result
 	usedMemory := dto.UsedMemory
 	usedTime := dto.UsedTime
