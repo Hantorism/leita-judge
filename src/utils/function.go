@@ -17,3 +17,11 @@ func AllString(s ...string) bool {
 	}
 	return true
 }
+
+func Sum[T ~int | ~int64](s []T) T {
+	var sum T
+	for _, v := range s {
+		sum += v
+	}
+	return sum
+}

@@ -51,8 +51,7 @@ func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 	}
 	timeLimit := problemInfo.TimeLimit
 	memoryLimit := problemInfo.MemoryLimit
-	log.Info("timeLimit: ", timeLimit)
-	log.Info("memoryLimit: ", memoryLimit)
+	var usedTime int64
 
 	printSubmitProblemInfo(language, submitId, problemId, code, timeLimit, memoryLimit)
 
@@ -73,7 +72,7 @@ func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 		saveSubmitResultDTO := SaveSubmitResultDTO{
 			Result:     result.String(),
 			UsedMemory: 1,
-			UsedTime:   1,
+			UsedTime: usedTime,
 			SubmitId:   submitId,
 		}
 
@@ -92,14 +91,14 @@ func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 		return result, err
 	}
 
-	defer func(language string, deleteCmd []string) {
+	defer func() {
 		if err = deleteProgram(language, deleteCmd); err != nil {
 			log.Error(err)
 			return
 		}
-	}(language, deleteCmd)
+	}()
 
-	result, err = judgeSubmit(runCmd, submitId, "submit", timeLimit, memoryLimit)
+	result, usedTime, err = judgeSubmit(runCmd, submitId, "submit", timeLimit, memoryLimit)
 	if err != nil {
 		log.Error(err)
 		return result, err
@@ -120,32 +119,36 @@ func (service *ProblemService) RunProblem(dto RunProblemDTO) []RunProblemResult 
 
 	result := JudgeUnknown
 
-	// db에서 시간, 메모리 가져오기
-	timeLimit := 3000
-	memoryLimit := 1024
+	problemInfo, err := service.repository.GetProblemInfo(problemId)
+	if err != nil {
+		log.Error(err)
+		return []RunProblemResult{{Result: result, Error: err}}
+	}
+	timeLimit := problemInfo.TimeLimit
+	memoryLimit := problemInfo.MemoryLimit
 
-	if err := printRunProblemInfo(language, submitId, problemId, code, testCases, timeLimit, memoryLimit); err != nil {
+	if err = printRunProblemInfo(language, submitId, problemId, code, testCases, timeLimit, memoryLimit); err != nil {
 		log.Error(err)
 		return []RunProblemResult{{Result: result, Error: err}}
 	}
 
-	if err := saveRunTestCases(submitId, testCases); err != nil {
+	if err = saveRunTestCases(submitId, testCases); err != nil {
 		log.Error(err)
 		return []RunProblemResult{{Result: result, Error: err}}
 	}
 
-	result, err := buildSource(submitId, language, "run", code, buildCmd)
+	result, err = buildSource(submitId, language, "run", code, buildCmd)
 	if err != nil {
 		log.Error(err)
 		return []RunProblemResult{{Result: result, Error: err}}
 	}
 
-	defer func(language string, deleteCmd []string) {
+	defer func() {
 		if err = deleteProgram(language, deleteCmd); err != nil {
 			log.Error(err)
 			return
 		}
-	}(language, deleteCmd)
+	}()
 
 	results := judgeRun(runCmd, submitId, "run", timeLimit, memoryLimit)
 
@@ -158,8 +161,8 @@ func printSubmitProblemInfo(language string, submitId, problemId int, code []byt
 	log.Info("제출 번호: ", submitId)
 	log.Info("문제 번호: ", problemId)
 	log.Info("시간 제한: ", timeLimit, "ms")
-	log.Info("메모리 제한: ", memoryLimit, "kb")
-	log.Info("코드 길이: ", len(string(code)))
+	log.Info("메모리 제한: ", memoryLimit, "KB")
+	log.Info("코드 길이: ", len(string(code)), "B")
 	log.Info("제출 코드:\n", string(code))
 }
 
@@ -169,8 +172,8 @@ func printRunProblemInfo(language string, submitId, problemId int, code []byte, 
 	log.Info("제출 번호: ", submitId)
 	log.Info("문제 번호: ", problemId)
 	log.Info("시간 제한: ", timeLimit, "ms")
-	log.Info("메모리 제한: ", memoryLimit, "kb")
-	log.Info("코드 길이: ", len(string(code)))
+	log.Info("메모리 제한: ", memoryLimit, "KB")
+	log.Info("코드 길이: ", len(string(code)), "B")
 	log.Info("제출 코드:\n", string(code))
 	log.Info("테스트 케이스:")
 	for i, testCase := range testCases {
@@ -325,14 +328,15 @@ func buildSource(submitId int, language, judgeType string, code []byte, buildCmd
 	return JudgeCorrect, nil
 }
 
-func judgeSubmit(runCmd []string, submitId int, judgeType string, timeLimit, memoryLimit int) (JudgeResultEnum, error) {
+func judgeSubmit(runCmd []string, submitId int, judgeType string, timeLimit, memoryLimit int) (JudgeResultEnum, int64, error) {
 	testCaseNum, err := GetTestCaseNum(filepath.Join(judgeType, strconv.Itoa(submitId), "in"))
 	if err != nil {
 		log.Error(err)
-		return JudgeUnknown, err
+		return JudgeUnknown, 0, err
 	}
 
 	judgeResults := make([]bool, 0, testCaseNum)
+	usedTimes := make([]int64, 0, testCaseNum)
 
 	for i := 0; i < testCaseNum; i++ {
 		log.Info("--------------------------------")
@@ -341,34 +345,40 @@ func judgeSubmit(runCmd []string, submitId int, judgeType string, timeLimit, mem
 		inputContents, err := os.ReadFile(filepath.Join(judgeType, strconv.Itoa(submitId), "in", strconv.Itoa(i)+".in"))
 		if err != nil {
 			log.Error(err)
-			return JudgeUnknown, err
+			return JudgeUnknown, 0, err
 		}
 
-		result, executeContents, err := executeProgram(runCmd, inputContents, timeLimit, memoryLimit)
+		result, executeContents, usedTime, err := executeProgram(runCmd, inputContents, timeLimit, memoryLimit)
 		if err != nil {
 			log.Error(err)
-			return result, err
+			return result, 0, err
 		}
 
 		outputContents, err := os.ReadFile(filepath.Join(judgeType, strconv.Itoa(submitId), "out", strconv.Itoa(i)+".out"))
 		if err != nil {
 			log.Error(err)
-			return JudgeUnknown, err
+			return JudgeUnknown, 0, err
 		}
 
+		log.Info("사용 시간: ", usedTime, "ms")
 		judgeResult := checkDifference(executeContents, outputContents)
 		judgeResults = append(judgeResults, judgeResult)
+		if i != 0 {
+			usedTimes = append(usedTimes, usedTime)
+		}
 	}
 
 	if !All(judgeResults) {
 		log.Info("--------------------------------")
 		log.Info("문제를 맞추지 못했습니다.")
-		return JudgeWrong, nil
+		usedTime := Sum(usedTimes) / (int64(testCaseNum) - 1)
+		return JudgeWrong, usedTime, nil
 	}
 
 	log.Info("--------------------------------")
 	log.Info("문제를 맞췄습니다!")
-	return JudgeCorrect, nil
+	usedTime := Sum(usedTimes) / (int64(testCaseNum) - 1)
+	return JudgeCorrect, usedTime, nil
 }
 
 func judgeRun(runCmd []string, submitId int, judgeType string, timeLimit, memoryLimit int) []RunProblemResult {
@@ -390,7 +400,7 @@ func judgeRun(runCmd []string, submitId int, judgeType string, timeLimit, memory
 			return []RunProblemResult{{Result: JudgeUnknown, Error: err}}
 		}
 
-		result, executeContents, err := executeProgram(runCmd, inputContents, timeLimit, memoryLimit)
+		result, executeContents, usedTime, err := executeProgram(runCmd, inputContents, timeLimit, memoryLimit)
 		if err != nil {
 			log.Error(err)
 			return []RunProblemResult{{Result: result, Error: err}}
@@ -402,9 +412,10 @@ func judgeRun(runCmd []string, submitId int, judgeType string, timeLimit, memory
 			return []RunProblemResult{{Result: JudgeUnknown, Error: err}}
 		}
 
-		judgeResult := checkDifference(executeContents, outputContents)
+		log.Info("사용 시간: ", usedTime, "ms")
+		isSame := checkDifference(executeContents, outputContents)
 		result = JudgeWrong
-		if judgeResult {
+		if isSame {
 			result = JudgeCorrect
 		}
 		results = append(results, RunProblemResult{Result: result})
@@ -421,7 +432,7 @@ func removeLineFeed(output []byte) []byte {
 	return output
 }
 
-func executeProgram(runCmd []string, inputContents []byte, timeLimit, memoryLimit int) (JudgeResultEnum, []byte, error) {
+func executeProgram(runCmd []string, inputContents []byte, timeLimit, memoryLimit int) (JudgeResultEnum, []byte, int64, error) {
 	log.Info("프로그램 실행 중...")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeLimit)*time.Millisecond)
 	defer cancel()
@@ -436,23 +447,28 @@ func executeProgram(runCmd []string, inputContents []byte, timeLimit, memoryLimi
 
 	if err := cmd.Start(); err != nil {
 		log.Error(err)
-		return JudgeRuntimeError, nil, err
+		return JudgeRuntimeError, nil, 0, err
 	}
 
-	if err := cmd.Wait(); err != nil {
-		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			log.Error(ctx.Err().Error())
-			return JudgeTimeOut, nil, ctx.Err()
-		}
+	startTime := time.Now()
+	err := cmd.Wait()
+	usedTime := time.Since(startTime).Milliseconds()
 
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		log.Error(ctx.Err().Error())
+		return JudgeTimeOut, nil, 0, ctx.Err()
+	}
+
+	if err != nil {
 		runtimeError := fmt.Errorf("\n%w\n%s", err, stderr.String())
 		log.Error(runtimeError)
-		return JudgeRuntimeError, nil, err
+		return JudgeRuntimeError, nil, 0, err
 	}
 
 	output := outputBuffer.Bytes()
 	output = removeLineFeed(output)
-	return JudgeCorrect, output, nil
+
+	return JudgeCorrect, output, usedTime, nil
 }
 
 func checkDifference(executeContents, outputContents []byte) bool {
