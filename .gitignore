@@ -5,3 +5,4 @@ submit
 run
 database
 .env
+.DS_Store
