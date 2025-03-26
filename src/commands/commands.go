@@ -1,59 +1,50 @@
 package commands
 
 type Command struct {
-	RequireBuild bool
-	BuildCmd     []string
-	RunCmd       []string
-	DeleteCmd    []string
+	BuildCmd  []string
+	RunCmd    []string
+	DeleteCmd []string
 }
 
 var Commands = map[string]Command{
 	"C": {
-		RequireBuild: true,
-		BuildCmd:     []string{"gcc", "-o", "bin/Main", "submit/Main.c"},
-		RunCmd:       []string{"bin/Main"},
-		DeleteCmd:    []string{"rm", "bin/Main"},
+		BuildCmd:  []string{"gcc", "{JUDGE_TYPE}/{SUBMIT_ID}/Main.c", "-o", "{JUDGE_TYPE}/{SUBMIT_ID}/Main", "-O2", "-Wall", "-lm", "-static", "-std=gnu99"},
+		RunCmd:    []string{"{JUDGE_TYPE}/{SUBMIT_ID}/Main"},
+		DeleteCmd: []string{"rm", "{JUDGE_TYPE}/{SUBMIT_ID}/Main"},
 	},
 	"CPP": {
-		RequireBuild: true,
-		BuildCmd:     []string{"g++", "-o", "bin/Main", "submit/Main.cpp"},
-		RunCmd:       []string{"bin/Main"},
-		DeleteCmd:    []string{"rm", "bin/Main"},
+		BuildCmd:  []string{"g++", "{JUDGE_TYPE}/{SUBMIT_ID}/Main.cpp", "-o", "{JUDGE_TYPE}/{SUBMIT_ID}/Main", "-O2", "-Wall", "-lm", "-static", "-std=gnu++17"},
+		RunCmd:    []string{"{JUDGE_TYPE}/{SUBMIT_ID}/Main"},
+		DeleteCmd: []string{"rm", "{JUDGE_TYPE}/{SUBMIT_ID}/Main"},
 	},
 	"JAVA": {
-		RequireBuild: true,
-		BuildCmd:     []string{"javac", "-d", "bin", "submit/Main.java"},
-		RunCmd:       []string{"java", "-cp", "bin", "Main"},
-		DeleteCmd:    []string{"rm", "bin/Main.class"},
+		BuildCmd:  []string{"javac", "-J-Xms1024m", "-J-Xmx1920m", "-J-Xss512m", "-encoding UTF-8", "-d", "bin", "{JUDGE_TYPE}/{SUBMIT_ID}/Main.java"},
+		RunCmd:    []string{"java", "-Xms1024m", "-Xmx1920m", "-Xss512m", "-Dfile.encoding=UTF-8", "-XX:+UseSerialGC", "-cp", "bin", "Main"},
+		DeleteCmd: []string{"rm", "{JUDGE_TYPE}/{SUBMIT_ID}/Main.class"},
 	},
 	"PYTHON": {
-		RequireBuild: false,
-		BuildCmd:     []string{},
-		RunCmd:       []string{"python3", "submit/Main.py"},
-		DeleteCmd:    []string{},
+		BuildCmd:  []string{},
+		RunCmd:    []string{"python3", "-W", "ignore", "{JUDGE_TYPE}/{SUBMIT_ID}/Main.py"},
+		DeleteCmd: []string{},
 	},
 	"JAVASCRIPT": {
-		RequireBuild: false,
-		BuildCmd:     []string{},
-		RunCmd:       []string{"node", "submit/Main.js"},
-		DeleteCmd:    []string{},
+		BuildCmd:  []string{},
+		RunCmd:    []string{"node", "--stack-size=65536", "{JUDGE_TYPE}/{SUBMIT_ID}/Main.js"},
+		DeleteCmd: []string{},
 	},
 	"GO": {
-		RequireBuild: true,
-		BuildCmd:     []string{"go", "build", "-o", "bin/Main", "submit/Main.go"},
-		RunCmd:       []string{"bin/Main"},
-		DeleteCmd:    []string{"rm", "bin/Main"},
+		BuildCmd:  []string{"go", "build", "-o", "{JUDGE_TYPE}/{SUBMIT_ID}/Main", "{JUDGE_TYPE}/{SUBMIT_ID}/Main.go"},
+		RunCmd:    []string{"{JUDGE_TYPE}/{SUBMIT_ID}/Main"},
+		DeleteCmd: []string{"rm", "{JUDGE_TYPE}/{SUBMIT_ID}/Main"},
 	},
 	"KOTLIN": {
-		RequireBuild: true,
-		BuildCmd:     []string{"kotlinc", "submit/Main.kt", "-include-runtime", "-d", "bin/Main.jar"},
-		RunCmd:       []string{"java", "-jar", "bin/Main.jar"},
-		DeleteCmd:    []string{"rm", "bin/Main.jar"},
+		BuildCmd:  []string{"kotlinc", "-J-Xms1024m", "-J-Xmx1920m", "-J-Xss512m", "-include-runtime", "-d", "{JUDGE_TYPE}/{SUBMIT_ID}/Main.jar", "{JUDGE_TYPE}/{SUBMIT_ID}/Main.kt"},
+		RunCmd:    []string{"java", "-Xms1024m", "-Xmx1920m", "-Xss512m", "-Dfile.encoding=UTF-8", "-XX:+UseSerialGC", "-jar", "{JUDGE_TYPE}/{SUBMIT_ID}/Main.jar"},
+		DeleteCmd: []string{"rm", "{JUDGE_TYPE}/{SUBMIT_ID}/Main.jar"},
 	},
 	"SWIFT": {
-		RequireBuild: true,
-		BuildCmd:     []string{"swiftc", "-o", "bin/Main", "submit/Main.swift"},
-		RunCmd:       []string{"bin/Main"},
-		DeleteCmd:    []string{"rm", "bin/Main"},
+		BuildCmd:  []string{"swiftc", "-O", "-o", "{JUDGE_TYPE}/{SUBMIT_ID}/Main", "{JUDGE_TYPE}/{SUBMIT_ID}/Main.swift"},
+		RunCmd:    []string{"{JUDGE_TYPE}/{SUBMIT_ID}/Main"},
+		DeleteCmd: []string{"rm", "{JUDGE_TYPE}/{SUBMIT_ID}/Main"},
 	},
 }

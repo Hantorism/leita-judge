@@ -1,0 +1,20 @@
+FROM docker.io/library/golang:1.23.4-alpine3.21 AS golang
+FROM docker.io/library/gcc:12.4.0 AS gcc
+
+FROM golang AS build
+WORKDIR /workspace
+RUN go install github.com/swaggo/swag/cmd/swag@v1.16.4
+COPY go.mod go.sum ./
+RUN go mod download -x
+COPY . .
+RUN swag init
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o server .
+
+FROM gcc AS run
+WORKDIR /workspace
+COPY .oci /root/.oci
+COPY .env .
+COPY --from=build /workspace/server .
+COPY --from=build /workspace/docs ./docs
+CMD ./server
+EXPOSE 1323

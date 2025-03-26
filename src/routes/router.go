@@ -1,13 +1,17 @@
 package routes
 
 import (
-	"github.com/gofiber/fiber/v3"
-	"leita/src/apis/problem"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 )
 
-func RegisterRoutes(app *fiber.App) {
+func RegisterRoutes(app *fiber.App) error {
 	api := app.Group("/api")
 
-	problemGroup := api.Group("/problem")
-	problemGroup.Post("/:problemId", problem.JudgeProblem)
+	if err := RegisterProblemRoutes(api); err != nil {
+		log.Error(err)
+		return err
+	}
+
+	return nil
 }
