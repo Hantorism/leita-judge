@@ -198,7 +198,8 @@ func saveSubmitTestCases(service *ProblemService, submitId, problemId int) error
 		return err
 	}
 
-	testCases, err := service.repository.GetObjectsInFolder(filepath.Join("testcases", strconv.Itoa(problemId)))
+	//testCases, err := service.repository.GetObjectsInFolder(filepath.Join("testcases", strconv.Itoa(problemId)))
+	testCases, err := service.repository.GetTestcases(problemId)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -210,13 +211,13 @@ func saveSubmitTestCases(service *ProblemService, submitId, problemId int) error
 
 	for i := 0; i < testCaseNum; i++ {
 		inputFilePath := filepath.Join("submit", strconv.Itoa(submitId), "in", strconv.Itoa(i)+".in")
-		if err = os.WriteFile(inputFilePath, inputTestCases[i].Content, 0644); err != nil {
+		if err = os.WriteFile(inputFilePath, inputTestCases[i], 0644); err != nil {
 			log.Error(err)
 			return err
 		}
 
 		outputFilePath := filepath.Join("submit", strconv.Itoa(submitId), "out", strconv.Itoa(i)+".out")
-		if err = os.WriteFile(outputFilePath, outputTestCases[i].Content, 0644); err != nil {
+		if err = os.WriteFile(outputFilePath, outputTestCases[i], 0644); err != nil {
 			log.Error(err)
 			return err
 		}

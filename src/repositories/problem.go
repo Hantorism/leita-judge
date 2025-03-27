@@ -23,16 +23,16 @@ func NewProblemRepository() (*ProblemRepository, error) {
 	}, nil
 }
 
-func (repository *ProblemRepository) GetProblemInfo(problemId int) (GetProblemInfoDTO, error) {
+func (repository *ProblemRepository) GetProblemInfo(problemId int) (GetProblemInfoDAO, error) {
 	db := repository.dataSource.GetDatabase()
 
 	query := "SELECT limit_time, limit_memory FROM problem WHERE id = ?;"
 	row := db.QueryRow(query, problemId)
 
-	var dto GetProblemInfoDTO
+	var dto GetProblemInfoDAO
 	if err := row.Scan(&dto.TimeLimit, &dto.MemoryLimit); err != nil {
 		log.Error(err)
-		return GetProblemInfoDTO{}, err
+		return GetProblemInfoDAO{}, err
 	}
 
 	return dto, nil
@@ -66,7 +66,7 @@ func (repository *ProblemRepository) SaveCode(path string, code []byte) error {
 	return nil
 }
 
-func (repository *ProblemRepository) GetObjectsInFolder(folderPath string) ([]ObjectContent, error) {
+func (repository *ProblemRepository) GetObjectsInFolder(folderPath string) ([][]byte, error) {
 	os := repository.dataSource.GetObjectStorage()
 	objects, err := os.ListObjects(folderPath)
 	if err != nil {
@@ -74,7 +74,7 @@ func (repository *ProblemRepository) GetObjectsInFolder(folderPath string) ([]Ob
 		return nil, err
 	}
 
-	contents := make([]ObjectContent, 0, len(objects))
+	contents := make([][]byte, 0, len(objects))
 	for _, object := range objects {
 		content, err := os.GetObject(*object.Name)
 		if err != nil {
@@ -82,11 +82,44 @@ func (repository *ProblemRepository) GetObjectsInFolder(folderPath string) ([]Ob
 			return nil, err
 		}
 
-		contents = append(contents, ObjectContent{
-			Name:    *object.Name,
-			Content: DecodeBase64(content),
-		})
+		contents = append(contents, DecodeBase64(content))
 	}
+	log.Debug(contents)
 
 	return contents, nil
+}
+
+// 테스트케이스 임시로 db에서 가져오기
+func (repository *ProblemRepository) GetTestcases(problemId int) ([][]byte, error) {
+	db := repository.dataSource.GetDatabase()
+
+	query := "SELECT input, output FROM problem_test_cases WHERE problem_id = ?;"
+	rows, err := db.Query(query, problemId)
+	if err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	testCases := make([][]byte, 0)
+	inputs := make([][]byte, 0)
+	outputs := make([][]byte, 0)
+	for rows.Next() {
+		var input, output []byte
+		if err = rows.Scan(&input, &output); err != nil {
+			log.Error(err)
+			return nil, err
+		}
+		inputs = append(inputs, DecodeBase64(input))
+		outputs = append(outputs, DecodeBase64(output))
+	}
+	if err = rows.Err(); err != nil {
+		log.Error(err)
+		return nil, err
+	}
+	testCases = append(testCases, inputs...)
+	testCases = append(testCases, outputs...)
+	log.Debug(testCases)
+
+	return testCases, nil
 }

@@ -84,12 +84,7 @@ func (jr JudgeResultEnum) String() string {
 	}[jr]
 }
 
-type ObjectContent struct {
-	Name    string
-	Content []byte
-}
-
-type GetProblemInfoDTO struct {
+type GetProblemInfoDAO struct {
 	TimeLimit   int
 	MemoryLimit int
 }
