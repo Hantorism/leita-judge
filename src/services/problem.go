@@ -127,10 +127,7 @@ func (service *ProblemService) RunProblem(dto RunProblemDTO) []RunProblemResult 
 	timeLimit := problemInfo.TimeLimit
 	memoryLimit := problemInfo.MemoryLimit
 
-	if err = printRunProblemInfo(language, submitId, problemId, code, testCases, timeLimit, memoryLimit); err != nil {
-		log.Error(err)
-		return []RunProblemResult{{Result: result, Error: err}}
-	}
+	printRunProblemInfo(language, submitId, problemId, code, testCases, timeLimit, memoryLimit)
 
 	if err = saveRunTestCases(submitId, testCases); err != nil {
 		log.Error(err)
@@ -166,7 +163,7 @@ func printSubmitProblemInfo(language string, submitId, problemId int, code []byt
 	log.Info("제출 코드:\n", string(code))
 }
 
-func printRunProblemInfo(language string, submitId, problemId int, code []byte, testCases []TestCase, timeLimit, memoryLimit int) error {
+func printRunProblemInfo(language string, submitId, problemId int, code []byte, testCases []TestCase, timeLimit, memoryLimit int) {
 	log.Info("--------------------------------")
 	log.Info("언어: ", language)
 	log.Info("제출 번호: ", submitId)
@@ -179,22 +176,12 @@ func printRunProblemInfo(language string, submitId, problemId int, code []byte, 
 	for i, testCase := range testCases {
 		log.Info(i+1, "번째 테스트 케이스")
 
-		input, err := Decode(testCase.Input)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
+		input := DecodeBase64([]byte(testCase.Input))
 		log.Info("입력:\n", string(input))
 
-		output, err := Decode(testCase.Output)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
+		output := DecodeBase64([]byte(testCase.Output))
 		log.Info("출력:\n", string(output))
 	}
-
-	return nil
 }
 
 func saveSubmitTestCases(service *ProblemService, submitId, problemId int) error {
@@ -254,24 +241,16 @@ func saveRunTestCases(submitId int, testCases []TestCase) error {
 	}
 
 	for i, testCase := range testCases {
-		inputContents, err := Decode(testCase.Input)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
+		inputContents := DecodeBase64([]byte(testCase.Input))
 		inputFilePath := filepath.Join("run", strconv.Itoa(submitId), "in", strconv.Itoa(i)+".in")
-		if err = os.WriteFile(inputFilePath, inputContents, 0644); err != nil {
+		if err := os.WriteFile(inputFilePath, inputContents, 0644); err != nil {
 			log.Error(err)
 			return err
 		}
 
-		outputContents, err := Decode(testCase.Output)
-		if err != nil {
-			log.Error(err)
-			return err
-		}
+		outputContents := DecodeBase64([]byte(testCase.Output))
 		outputFilePath := filepath.Join("run", strconv.Itoa(submitId), "out", strconv.Itoa(i)+".out")
-		if err = os.WriteFile(outputFilePath, outputContents, 0644); err != nil {
+		if err := os.WriteFile(outputFilePath, outputContents, 0644); err != nil {
 			log.Error(err)
 			return err
 		}
@@ -290,8 +269,8 @@ func saveSourceCode(submitId int, code []byte, language, judgeType string) error
 		return err
 	}
 
-	inputFilePath := filepath.Join(judgeType, strconv.Itoa(submitId), "Main."+FileExtension(language))
-	if err := os.WriteFile(inputFilePath, code, 0644); err != nil {
+	sourceFilePath := filepath.Join(judgeType, strconv.Itoa(submitId), "Main."+FileExtension(language))
+	if err := os.WriteFile(sourceFilePath, code, 0644); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -513,7 +492,7 @@ func saveCode(service *ProblemService, path string, code []byte) error {
 	log.Info("--------------------------------")
 	log.Info("오브젝트 스토리지에 제출 코드 저장 중...")
 
-	if err := service.repository.SaveCode(path, code); err != nil {
+	if err := service.repository.SaveCode(path, EncodeBase64(code)); err != nil {
 		log.Error(err)
 		return err
 	}

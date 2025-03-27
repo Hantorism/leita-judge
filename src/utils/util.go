@@ -13,14 +13,19 @@ import (
 
 var envMap = make(map[string]string)
 
-func Decode(encodedString string) ([]byte, error) {
-	decodedBytes, err := base64.StdEncoding.DecodeString(encodedString)
-	if err != nil {
-		log.Error(err)
-		return nil, err
-	}
+func DecodeBase64(data []byte) []byte {
+	decodedData := make([]byte, base64.StdEncoding.DecodedLen(len(data)))
+	n, _ := base64.StdEncoding.Decode(decodedData, data)
+	decodedData = decodedData[:n]
 
-	return decodedBytes, nil
+	return decodedData
+}
+
+func EncodeBase64(data []byte) []byte {
+	encodedData := make([]byte, base64.StdEncoding.EncodedLen(len(data)))
+	base64.StdEncoding.Encode(encodedData, data)
+
+	return encodedData
 }
 
 func FileExtension(language string) string {

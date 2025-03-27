@@ -4,6 +4,7 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 	"leita/src/dataSources"
 	. "leita/src/entities"
+	. "leita/src/utils"
 )
 
 type ProblemRepository struct {
@@ -73,7 +74,7 @@ func (repository *ProblemRepository) GetObjectsInFolder(folderPath string) ([]Ob
 		return nil, err
 	}
 
-	contents := make([]ObjectContent, 0)
+	contents := make([]ObjectContent, 0, len(objects))
 	for _, object := range objects {
 		content, err := os.GetObject(*object.Name)
 		if err != nil {
@@ -83,7 +84,7 @@ func (repository *ProblemRepository) GetObjectsInFolder(folderPath string) ([]Ob
 
 		contents = append(contents, ObjectContent{
 			Name:    *object.Name,
-			Content: content,
+			Content: DecodeBase64(content),
 		})
 	}
 

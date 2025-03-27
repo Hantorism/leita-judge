@@ -56,6 +56,7 @@ func (os *ObjectStorage) PutObject(objectName string, data []byte) error {
 		BucketName:    common.String(GetEnv("OS_BUCKET")),
 		ObjectName:    common.String(objectName),
 		PutObjectBody: io.NopCloser(bytes.NewReader(data)),
+		ContentType: common.String("text/plain"),
 	}
 
 	_, err := os.Client.PutObject(context.Background(), request)

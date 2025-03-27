@@ -58,14 +58,7 @@ func (handler *ProblemHandler) SubmitProblem() fiber.Handler {
 		}
 		submitId := req.SubmitId
 		language := req.Language
-		code, err := Decode(req.Code)
-		if err != nil {
-			log.Error(err)
-			return c.Status(fiber.StatusInternalServerError).JSON(SubmitProblemResponse{
-				Result: "",
-				Error:  err.Error(),
-			})
-		}
+		code := DecodeBase64([]byte(req.Code))
 		command := Commands[language]
 		buildCmd := ReplaceCommand(command.BuildCmd, "submit", submitId)
 		runCmd := ReplaceCommand(command.RunCmd, "submit", submitId)
@@ -134,16 +127,7 @@ func (handler *ProblemHandler) RunProblem() fiber.Handler {
 			})
 		}
 		language := req.Language
-		code, err := Decode(req.Code)
-		if err != nil {
-			log.Error(err)
-			return c.Status(fiber.StatusInternalServerError).JSON([]RunProblemResponse{
-				{
-					Result: "",
-					Error:  err.Error(),
-				},
-			})
-		}
+		code := DecodeBase64([]byte(req.Code))
 		testCases := req.TestCases
 		submitId := RandomInt(int(math.Pow10(11)), int(math.Pow10(12)-1))
 		command := Commands[language]
