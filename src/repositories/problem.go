@@ -84,7 +84,6 @@ func (repository *ProblemRepository) GetObjectsInFolder(folderPath string) ([][]
 
 		contents = append(contents, DecodeBase64(content))
 	}
-	log.Debug(contents)
 
 	return contents, nil
 }
@@ -119,7 +118,6 @@ func (repository *ProblemRepository) GetTestcases(problemId int) ([][]byte, erro
 	}
 	testCases = append(testCases, inputs...)
 	testCases = append(testCases, outputs...)
-	log.Debug(testCases)
 
 	return testCases, nil
 }

@@ -24,8 +24,8 @@ type SubmitProblemDTO struct {
 type SaveSubmitResultDTO struct {
 	SubmitId   int
 	Result     string
-	UsedMemory int
-	UsedTime int64
+	UsedMemory int64
+	UsedTime   int64
 }
 
 type RunProblemRequest struct {

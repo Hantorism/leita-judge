@@ -52,6 +52,7 @@ func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 	timeLimit := problemInfo.TimeLimit
 	memoryLimit := problemInfo.MemoryLimit
 	var usedTime int64
+	var usedMemory int64
 
 	printSubmitProblemInfo(language, submitId, problemId, code, timeLimit, memoryLimit)
 
@@ -71,8 +72,8 @@ func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 	defer func() {
 		saveSubmitResultDTO := SaveSubmitResultDTO{
 			Result:     result.String(),
-			UsedMemory: 1,
-			UsedTime: usedTime,
+			UsedMemory: usedMemory,
+			UsedTime:   usedTime,
 			SubmitId:   submitId,
 		}
 
@@ -98,7 +99,7 @@ func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 		}
 	}()
 
-	result, usedTime, err = judgeSubmit(runCmd, submitId, "submit", timeLimit, memoryLimit)
+	result, usedTime, usedMemory, err = judgeSubmit(runCmd, submitId, "submit", timeLimit, memoryLimit)
 	if err != nil {
 		log.Error(err)
 		return result, err
@@ -308,15 +309,16 @@ func buildSource(submitId int, language, judgeType string, code []byte, buildCmd
 	return JudgeCorrect, nil
 }
 
-func judgeSubmit(runCmd []string, submitId int, judgeType string, timeLimit, memoryLimit int) (JudgeResultEnum, int64, error) {
+func judgeSubmit(runCmd []string, submitId int, judgeType string, timeLimit, memoryLimit int) (JudgeResultEnum, int64, int64, error) {
 	testCaseNum, err := GetTestCaseNum(filepath.Join(judgeType, strconv.Itoa(submitId), "in"))
 	if err != nil {
 		log.Error(err)
-		return JudgeUnknown, 0, err
+		return JudgeUnknown, 0, 0, err
 	}
 
 	judgeResults := make([]bool, 0, testCaseNum)
 	usedTimes := make([]int64, 0, testCaseNum)
+	usedMemories := make([]int64, 0, testCaseNum)
 
 	for i := 0; i < testCaseNum; i++ {
 		log.Info("--------------------------------")
@@ -325,40 +327,47 @@ func judgeSubmit(runCmd []string, submitId int, judgeType string, timeLimit, mem
 		inputContents, err := os.ReadFile(filepath.Join(judgeType, strconv.Itoa(submitId), "in", strconv.Itoa(i)+".in"))
 		if err != nil {
 			log.Error(err)
-			return JudgeUnknown, 0, err
+			return JudgeUnknown, 0, 0, err
 		}
 
-		result, executeContents, usedTime, err := executeProgram(runCmd, inputContents, timeLimit, memoryLimit)
+		result, executeContents, usedTime, usedMemory, err := executeProgram(runCmd, inputContents, timeLimit, memoryLimit)
 		if err != nil {
 			log.Error(err)
-			return result, 0, err
+			return result, 0, 0, err
 		}
 
 		outputContents, err := os.ReadFile(filepath.Join(judgeType, strconv.Itoa(submitId), "out", strconv.Itoa(i)+".out"))
 		if err != nil {
 			log.Error(err)
-			return JudgeUnknown, 0, err
+			return JudgeUnknown, 0, 0, err
 		}
 
 		log.Info("사용 시간: ", usedTime, "ms")
+		log.Info("사용 메모리: ", usedMemory, "KB")
 		judgeResult := checkDifference(executeContents, outputContents)
 		judgeResults = append(judgeResults, judgeResult)
 		if i != 0 {
 			usedTimes = append(usedTimes, usedTime)
 		}
+		usedMemories = append(usedMemories, usedMemory)
 	}
+
+	usedTime := Sum(usedTimes) / (int64(testCaseNum) - 1)
+	usedMemory := Sum(usedMemories) / int64(testCaseNum)
 
 	if !All(judgeResults) {
 		log.Info("--------------------------------")
 		log.Info("문제를 맞추지 못했습니다.")
-		usedTime := Sum(usedTimes) / (int64(testCaseNum) - 1)
-		return JudgeWrong, usedTime, nil
+		log.Info("평균 사용 시간: ", usedTime, "ms")
+		log.Info("평균 사용 메모리: ", usedMemory, "KB")
+		return JudgeWrong, usedTime, usedMemory, nil
 	}
 
 	log.Info("--------------------------------")
 	log.Info("문제를 맞췄습니다!")
-	usedTime := Sum(usedTimes) / (int64(testCaseNum) - 1)
-	return JudgeCorrect, usedTime, nil
+	log.Info("평균 사용 시간: ", usedTime, "ms")
+	log.Info("평균 사용 메모리: ", usedMemory, "KB")
+	return JudgeCorrect, usedTime, usedMemory, nil
 }
 
 func judgeRun(runCmd []string, submitId int, judgeType string, timeLimit, memoryLimit int) []RunProblemResult {
@@ -380,7 +389,7 @@ func judgeRun(runCmd []string, submitId int, judgeType string, timeLimit, memory
 			return []RunProblemResult{{Result: JudgeUnknown, Error: err}}
 		}
 
-		result, executeContents, usedTime, err := executeProgram(runCmd, inputContents, timeLimit, memoryLimit)
+		result, executeContents, usedTime, usedMemory, err := executeProgram(runCmd, inputContents, timeLimit, memoryLimit)
 		if err != nil {
 			log.Error(err)
 			return []RunProblemResult{{Result: result, Error: err}}
@@ -393,6 +402,7 @@ func judgeRun(runCmd []string, submitId int, judgeType string, timeLimit, memory
 		}
 
 		log.Info("사용 시간: ", usedTime, "ms")
+		log.Info("사용 메모리: ", usedMemory, "KB")
 		isSame := checkDifference(executeContents, outputContents)
 		result = JudgeWrong
 		if isSame {
@@ -412,7 +422,7 @@ func removeLineFeed(output []byte) []byte {
 	return output
 }
 
-func executeProgram(runCmd []string, inputContents []byte, timeLimit, memoryLimit int) (JudgeResultEnum, []byte, int64, error) {
+func executeProgram(runCmd []string, inputContents []byte, timeLimit, memoryLimit int) (JudgeResultEnum, []byte, int64, int64, error) {
 	log.Info("프로그램 실행 중...")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeLimit)*time.Millisecond)
 	defer cancel()
@@ -427,7 +437,7 @@ func executeProgram(runCmd []string, inputContents []byte, timeLimit, memoryLimi
 
 	if err := cmd.Start(); err != nil {
 		log.Error(err)
-		return JudgeRuntimeError, nil, 0, err
+		return JudgeRuntimeError, nil, 0, 0, err
 	}
 
 	startTime := time.Now()
@@ -436,19 +446,19 @@ func executeProgram(runCmd []string, inputContents []byte, timeLimit, memoryLimi
 
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		log.Error(ctx.Err().Error())
-		return JudgeTimeOut, nil, 0, ctx.Err()
+		return JudgeTimeOut, nil, 0, 0, ctx.Err()
 	}
 
 	if err != nil {
 		runtimeError := fmt.Errorf("\n%w\n%s", err, stderr.String())
 		log.Error(runtimeError)
-		return JudgeRuntimeError, nil, 0, err
+		return JudgeRuntimeError, nil, 0, 0, err
 	}
 
 	output := outputBuffer.Bytes()
 	output = removeLineFeed(output)
 
-	return JudgeCorrect, output, usedTime, nil
+	return JudgeCorrect, output, usedTime, 0, nil
 }
 
 func checkDifference(executeContents, outputContents []byte) bool {
