@@ -42,30 +42,17 @@ func (handler *ProblemHandler) SubmitProblem() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req SubmitProblemRequest
 		if err := c.BodyParser(&req); err != nil {
+			log.Error(err)
 			return c.Status(fiber.StatusBadRequest).JSON(SubmitProblemResponse{
 				Result: "",
 				Error:  err.Error(),
 			})
 		}
 
-		problemId, err := strconv.Atoi(c.Params("problemId"))
-		if err != nil {
-			log.Error(err)
-			return c.Status(fiber.StatusInternalServerError).JSON(SubmitProblemResponse{
-				Result: "",
-				Error:  err.Error(),
-			})
-		}
+		problemId, _ := strconv.Atoi(c.Params("problemId"))
 		submitId := req.SubmitId
 		language := req.Language
-		code, err := Decode(req.Code)
-		if err != nil {
-			log.Error(err)
-			return c.Status(fiber.StatusInternalServerError).JSON(SubmitProblemResponse{
-				Result: "",
-				Error:  err.Error(),
-			})
-		}
+		code := DecodeBase64([]byte(req.Code))
 		command := Commands[language]
 		buildCmd := ReplaceCommand(command.BuildCmd, "submit", submitId)
 		runCmd := ReplaceCommand(command.RunCmd, "submit", submitId)
@@ -115,6 +102,7 @@ func (handler *ProblemHandler) RunProblem() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		var req RunProblemRequest
 		if err := c.BodyParser(&req); err != nil {
+			log.Error(err)
 			return c.Status(fiber.StatusBadRequest).JSON([]RunProblemResponse{
 				{
 					Result: "",
@@ -123,27 +111,9 @@ func (handler *ProblemHandler) RunProblem() fiber.Handler {
 			})
 		}
 
-		problemId, err := strconv.Atoi(c.Params("problemId"))
-		if err != nil {
-			log.Error(err)
-			return c.Status(fiber.StatusInternalServerError).JSON([]SubmitProblemResponse{
-				{
-					Result: "",
-					Error:  err.Error(),
-				},
-			})
-		}
+		problemId, _ := strconv.Atoi(c.Params("problemId"))
 		language := req.Language
-		code, err := Decode(req.Code)
-		if err != nil {
-			log.Error(err)
-			return c.Status(fiber.StatusInternalServerError).JSON([]RunProblemResponse{
-				{
-					Result: "",
-					Error:  err.Error(),
-				},
-			})
-		}
+		code := DecodeBase64([]byte(req.Code))
 		testCases := req.TestCases
 		submitId := RandomInt(int(math.Pow10(11)), int(math.Pow10(12)-1))
 		command := Commands[language]

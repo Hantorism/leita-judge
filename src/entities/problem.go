@@ -24,8 +24,8 @@ type SubmitProblemDTO struct {
 type SaveSubmitResultDTO struct {
 	SubmitId   int
 	Result     string
-	UsedMemory int
-	UsedTime int64
+	UsedMemory int64
+	UsedTime   int64
 }
 
 type RunProblemRequest struct {
@@ -84,12 +84,7 @@ func (jr JudgeResultEnum) String() string {
 	}[jr]
 }
 
-type ObjectContent struct {
-	Name    string
-	Content []byte
-}
-
-type GetProblemInfoDTO struct {
+type GetProblemInfoDAO struct {
 	TimeLimit   int
 	MemoryLimit int
 }
