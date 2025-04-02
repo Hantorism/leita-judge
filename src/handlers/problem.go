@@ -56,9 +56,9 @@ func (handler *ProblemHandler) SubmitProblem() fiber.Handler {
 		language := req.Language
 		code := DecodeBase64([]byte(req.Code))
 		command := Commands[language]
-		buildCmd := ReplaceCommand(command.BuildCmd, "submit", submitId)
-		runCmd := ReplaceCommand(command.RunCmd, "submit", submitId)
-		deleteCmd := ReplaceCommand(command.DeleteCmd, "submit", submitId)
+		buildCmd := ReplaceCommand(command.BuildCmd, JudgeSubmit, submitId)
+		runCmd := ReplaceCommand(command.RunCmd, JudgeSubmit, submitId)
+		deleteCmd := ReplaceCommand(command.DeleteCmd, JudgeSubmit, submitId)
 
 		submitProblemDTO := SubmitProblemDTO{
 			ProblemId: problemId,
@@ -123,9 +123,9 @@ func (handler *ProblemHandler) RunProblem() fiber.Handler {
 		testCases := req.TestCases
 		submitId := RandomInt(int(math.Pow10(11)), int(math.Pow10(12)-1))
 		command := Commands[language]
-		buildCmd := ReplaceCommand(command.BuildCmd, "run", submitId)
-		runCmd := ReplaceCommand(command.RunCmd, "run", submitId)
-		deleteCmd := ReplaceCommand(command.DeleteCmd, "run", submitId)
+		buildCmd := ReplaceCommand(command.BuildCmd, JudgeRun, submitId)
+		runCmd := ReplaceCommand(command.RunCmd, JudgeRun, submitId)
+		deleteCmd := ReplaceCommand(command.DeleteCmd, JudgeRun, submitId)
 
 		runProblemDTO := RunProblemDTO{
 			ProblemId: problemId,

@@ -172,12 +172,12 @@ func saveSubmitTestCases(service *ProblemService, submitId, problemId int) error
 	log.Info("--------------------------------")
 	log.Info("테스트 케이스 저장 중...")
 
-	if err := MakeDir(filepath.Join("submit", strconv.Itoa(submitId), "in")); err != nil {
+	if err := MakeDir(filepath.Join(JudgeSubmit.String(), strconv.Itoa(submitId), "in")); err != nil {
 		log.Error(err)
 		return err
 	}
 
-	if err := MakeDir(filepath.Join("submit", strconv.Itoa(submitId), "out")); err != nil {
+	if err := MakeDir(filepath.Join(JudgeSubmit.String(), strconv.Itoa(submitId), "out")); err != nil {
 		log.Error(err)
 		return err
 	}
@@ -194,13 +194,13 @@ func saveSubmitTestCases(service *ProblemService, submitId, problemId int) error
 	outputTestCases := testCases[testCaseNum:]
 
 	for i := 0; i < testCaseNum; i++ {
-		inputFilePath := filepath.Join("submit", strconv.Itoa(submitId), "in", strconv.Itoa(i)+".in")
+		inputFilePath := filepath.Join(JudgeSubmit.String(), strconv.Itoa(submitId), "in", strconv.Itoa(i)+".in")
 		if err = os.WriteFile(inputFilePath, inputTestCases[i], 0644); err != nil {
 			log.Error(err)
 			return err
 		}
 
-		outputFilePath := filepath.Join("submit", strconv.Itoa(submitId), "out", strconv.Itoa(i)+".out")
+		outputFilePath := filepath.Join(JudgeSubmit.String(), strconv.Itoa(submitId), "out", strconv.Itoa(i)+".out")
 		if err = os.WriteFile(outputFilePath, outputTestCases[i], 0644); err != nil {
 			log.Error(err)
 			return err
@@ -215,26 +215,26 @@ func saveRunTestCases(submitId int, testCases []TestCase) error {
 	log.Info("--------------------------------")
 	log.Info("테스트 케이스 저장 중...")
 
-	if err := MakeDir(filepath.Join("run", strconv.Itoa(submitId), "in")); err != nil {
+	if err := MakeDir(filepath.Join(JudgeRun.String(), strconv.Itoa(submitId), "in")); err != nil {
 		log.Error(err)
 		return err
 	}
 
-	if err := MakeDir(filepath.Join("run", strconv.Itoa(submitId), "out")); err != nil {
+	if err := MakeDir(filepath.Join(JudgeRun.String(), strconv.Itoa(submitId), "out")); err != nil {
 		log.Error(err)
 		return err
 	}
 
 	for i, testCase := range testCases {
 		inputContents := DecodeBase64([]byte(testCase.Input))
-		inputFilePath := filepath.Join("run", strconv.Itoa(submitId), "in", strconv.Itoa(i)+".in")
+		inputFilePath := filepath.Join(JudgeRun.String(), strconv.Itoa(submitId), "in", strconv.Itoa(i)+".in")
 		if err := os.WriteFile(inputFilePath, inputContents, 0644); err != nil {
 			log.Error(err)
 			return err
 		}
 
 		outputContents := DecodeBase64([]byte(testCase.Output))
-		outputFilePath := filepath.Join("run", strconv.Itoa(submitId), "out", strconv.Itoa(i)+".out")
+		outputFilePath := filepath.Join(JudgeRun.String(), strconv.Itoa(submitId), "out", strconv.Itoa(i)+".out")
 		if err := os.WriteFile(outputFilePath, outputContents, 0644); err != nil {
 			log.Error(err)
 			return err
