@@ -7,8 +7,10 @@ type SubmitProblemRequest struct {
 }
 
 type SubmitProblemResponse struct {
-	Result string `json:"result"`
-	Error  string `json:"error"`
+	Result     string `json:"result"`
+	Error      string `json:"error"`
+	UsedTime   int64  `json:"usedTime"`
+	UsedMemory int64  `json:"usedMemory"`
 }
 
 type SubmitProblemDTO struct {
@@ -82,6 +84,20 @@ func (jr JudgeResultEnum) String() string {
 		JudgeMemoryOut:    "MEMORY_OUT",
 		JudgeTimeOut:      "TIME_OUT",
 	}[jr]
+}
+
+type JudgeTypeEnum int
+
+const (
+	JudgeSubmit JudgeTypeEnum = iota
+	JudgeRun
+)
+
+func (jt JudgeTypeEnum) String() string {
+	return map[JudgeTypeEnum]string{
+		JudgeSubmit: "submit",
+		JudgeRun:    "run",
+	}[jt]
 }
 
 type GetProblemInfoDAO struct {
