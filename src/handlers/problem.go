@@ -44,8 +44,10 @@ func (handler *ProblemHandler) SubmitProblem() fiber.Handler {
 		if err := c.BodyParser(&req); err != nil {
 			log.Error(err)
 			return c.Status(fiber.StatusBadRequest).JSON(SubmitProblemResponse{
-				Result: "",
-				Error:  err.Error(),
+				Result:     "",
+				Error:      err.Error(),
+				UsedTime:   0,
+				UsedMemory: 0,
 			})
 		}
 
@@ -68,12 +70,14 @@ func (handler *ProblemHandler) SubmitProblem() fiber.Handler {
 			DeleteCmd: deleteCmd,
 		}
 
-		result, err := handler.service.SubmitProblem(submitProblemDTO)
+		result, usedTime, usedMemory, err := handler.service.SubmitProblem(submitProblemDTO)
 		if result == JudgeUnknown {
 			log.Error(err)
 			return c.Status(fiber.StatusInternalServerError).JSON(SubmitProblemResponse{
-				Result: JudgeUnknown.String(),
-				Error:  err.Error(),
+				Result:     JudgeUnknown.String(),
+				Error:      err.Error(),
+				UsedTime:   0,
+				UsedMemory: 0,
 			})
 		}
 
@@ -82,8 +86,10 @@ func (handler *ProblemHandler) SubmitProblem() fiber.Handler {
 			errMsg = err.Error()
 		}
 		return c.Status(fiber.StatusOK).JSON(SubmitProblemResponse{
-			Result: result.String(),
-			Error: errMsg,
+			Result:     result.String(),
+			Error:      errMsg,
+			UsedTime:   usedTime,
+			UsedMemory: usedMemory,
 		})
 	}
 }

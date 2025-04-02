@@ -33,7 +33,7 @@ func NewProblemService() (*ProblemService, error) {
 	}, nil
 }
 
-func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultEnum, error) {
+func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultEnum, int64, int64, error) {
 	problemId := dto.ProblemId
 	submitId := dto.SubmitId
 	language := dto.Language
@@ -47,7 +47,7 @@ func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 	problemInfo, err := service.repository.GetProblemInfo(problemId)
 	if err != nil {
 		log.Error(err)
-		return result, err
+		return result, 0, 0, err
 	}
 	timeLimit := problemInfo.TimeLimit
 	memoryLimit := problemInfo.MemoryLimit
@@ -58,7 +58,7 @@ func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 
 	if err = saveSubmitTestCases(service, submitId, problemId); err != nil {
 		log.Error(err)
-		return result, err
+		return result, 0, 0, err
 	}
 
 	defer func() {
@@ -69,27 +69,10 @@ func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 		}
 	}()
 
-	defer func() {
-		saveSubmitResultDTO := SaveSubmitResultDTO{
-			Result:     result.String(),
-			UsedMemory: usedMemory,
-			UsedTime:   usedTime,
-			SubmitId:   submitId,
-		}
-
-		log.Info("--------------------------------")
-		log.Info("데이터베이스에 채점 결과 저장 중...")
-		if err = service.repository.SaveSubmitResult(saveSubmitResultDTO); err != nil {
-			log.Error(err)
-			return
-		}
-		log.Info("데이터베이스에 채점 결과 저장 완료!")
-	}()
-
-	result, err = buildSource(submitId, language, "submit", code, buildCmd)
+	result, err = buildSource(submitId, language, JudgeSubmit, code, buildCmd)
 	if err != nil {
 		log.Error(err)
-		return result, err
+		return result, 0, 0, err
 	}
 
 	defer func() {
@@ -99,13 +82,13 @@ func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 		}
 	}()
 
-	result, usedTime, usedMemory, err = judgeSubmit(runCmd, submitId, "submit", timeLimit, memoryLimit)
+	result, usedTime, usedMemory, err = judgeSubmit(runCmd, submitId, JudgeSubmit, timeLimit, memoryLimit)
 	if err != nil {
 		log.Error(err)
-		return result, err
+		return result, 0, 0, err
 	}
 
-	return result, nil
+	return result, usedTime, usedMemory, nil
 }
 
 func (service *ProblemService) RunProblem(dto RunProblemDTO) []RunProblemResult {
@@ -135,7 +118,7 @@ func (service *ProblemService) RunProblem(dto RunProblemDTO) []RunProblemResult 
 		return []RunProblemResult{{Result: result, Error: err}}
 	}
 
-	result, err = buildSource(submitId, language, "run", code, buildCmd)
+	result, err = buildSource(submitId, language, JudgeRun, code, buildCmd)
 	if err != nil {
 		log.Error(err)
 		return []RunProblemResult{{Result: result, Error: err}}
@@ -148,7 +131,7 @@ func (service *ProblemService) RunProblem(dto RunProblemDTO) []RunProblemResult 
 		}
 	}()
 
-	results := judgeRun(runCmd, submitId, "run", timeLimit, memoryLimit)
+	results := judgeRun(runCmd, submitId, JudgeRun, timeLimit, memoryLimit)
 
 	return results
 }
@@ -262,16 +245,16 @@ func saveRunTestCases(submitId int, testCases []TestCase) error {
 	return nil
 }
 
-func saveSourceCode(submitId int, code []byte, language, judgeType string) error {
+func saveSourceCode(submitId int, code []byte, language string, judgeType JudgeTypeEnum) error {
 	log.Info("--------------------------------")
 	log.Info("소스 코드 저장 중...")
 
-	if err := MakeDir(filepath.Join(judgeType, strconv.Itoa(submitId))); err != nil {
+	if err := MakeDir(filepath.Join(judgeType.String(), strconv.Itoa(submitId))); err != nil {
 		log.Error(err)
 		return err
 	}
 
-	sourceFilePath := filepath.Join(judgeType, strconv.Itoa(submitId), "Main."+FileExtension(language))
+	sourceFilePath := filepath.Join(judgeType.String(), strconv.Itoa(submitId), "Main."+FileExtension(language))
 	if err := os.WriteFile(sourceFilePath, code, 0644); err != nil {
 		log.Error(err)
 		return err
@@ -281,7 +264,7 @@ func saveSourceCode(submitId int, code []byte, language, judgeType string) error
 	return nil
 }
 
-func buildSource(submitId int, language, judgeType string, code []byte, buildCmd []string) (JudgeResultEnum, error) {
+func buildSource(submitId int, language string, judgeType JudgeTypeEnum, code []byte, buildCmd []string) (JudgeResultEnum, error) {
 	if err := saveSourceCode(submitId, code, language, judgeType); err != nil {
 		log.Error(err)
 		return JudgeUnknown, err
@@ -309,8 +292,8 @@ func buildSource(submitId int, language, judgeType string, code []byte, buildCmd
 	return JudgeCorrect, nil
 }
 
-func judgeSubmit(runCmd []string, submitId int, judgeType string, timeLimit, memoryLimit int) (JudgeResultEnum, int64, int64, error) {
-	testCaseNum, err := GetTestCaseNum(filepath.Join(judgeType, strconv.Itoa(submitId), "in"))
+func judgeSubmit(runCmd []string, submitId int, judgeType JudgeTypeEnum, timeLimit, memoryLimit int) (JudgeResultEnum, int64, int64, error) {
+	testCaseNum, err := GetTestCaseNum(filepath.Join(judgeType.String(), strconv.Itoa(submitId), "in"))
 	if err != nil {
 		log.Error(err)
 		return JudgeUnknown, 0, 0, err
@@ -324,7 +307,7 @@ func judgeSubmit(runCmd []string, submitId int, judgeType string, timeLimit, mem
 		log.Info("--------------------------------")
 		log.Info(i+1, "번째 테스트케이스 실행")
 
-		inputContents, err := os.ReadFile(filepath.Join(judgeType, strconv.Itoa(submitId), "in", strconv.Itoa(i)+".in"))
+		inputContents, err := os.ReadFile(filepath.Join(judgeType.String(), strconv.Itoa(submitId), "in", strconv.Itoa(i)+".in"))
 		if err != nil {
 			log.Error(err)
 			return JudgeUnknown, 0, 0, err
@@ -336,7 +319,7 @@ func judgeSubmit(runCmd []string, submitId int, judgeType string, timeLimit, mem
 			return result, 0, 0, err
 		}
 
-		outputContents, err := os.ReadFile(filepath.Join(judgeType, strconv.Itoa(submitId), "out", strconv.Itoa(i)+".out"))
+		outputContents, err := os.ReadFile(filepath.Join(judgeType.String(), strconv.Itoa(submitId), "out", strconv.Itoa(i)+".out"))
 		if err != nil {
 			log.Error(err)
 			return JudgeUnknown, 0, 0, err
@@ -370,8 +353,8 @@ func judgeSubmit(runCmd []string, submitId int, judgeType string, timeLimit, mem
 	return JudgeCorrect, usedTime, usedMemory, nil
 }
 
-func judgeRun(runCmd []string, submitId int, judgeType string, timeLimit, memoryLimit int) []RunProblemResult {
-	testCaseNum, err := GetTestCaseNum(filepath.Join(judgeType, strconv.Itoa(submitId), "in"))
+func judgeRun(runCmd []string, submitId int, judgeType JudgeTypeEnum, timeLimit, memoryLimit int) []RunProblemResult {
+	testCaseNum, err := GetTestCaseNum(filepath.Join(judgeType.String(), strconv.Itoa(submitId), "in"))
 	if err != nil {
 		log.Error(err)
 		return []RunProblemResult{{Result: JudgeUnknown, Error: err}}
@@ -383,7 +366,7 @@ func judgeRun(runCmd []string, submitId int, judgeType string, timeLimit, memory
 		log.Info("--------------------------------")
 		log.Info(i+1, "번째 테스트케이스 실행")
 
-		inputContents, err := os.ReadFile(filepath.Join(judgeType, strconv.Itoa(submitId), "in", strconv.Itoa(i)+".in"))
+		inputContents, err := os.ReadFile(filepath.Join(judgeType.String(), strconv.Itoa(submitId), "in", strconv.Itoa(i)+".in"))
 		if err != nil {
 			log.Error(err)
 			return []RunProblemResult{{Result: JudgeUnknown, Error: err}}
@@ -395,7 +378,7 @@ func judgeRun(runCmd []string, submitId int, judgeType string, timeLimit, memory
 			return []RunProblemResult{{Result: result, Error: err}}
 		}
 
-		outputContents, err := os.ReadFile(filepath.Join(judgeType, strconv.Itoa(submitId), "out", strconv.Itoa(i)+".out"))
+		outputContents, err := os.ReadFile(filepath.Join(judgeType.String(), strconv.Itoa(submitId), "out", strconv.Itoa(i)+".out"))
 		if err != nil {
 			log.Error(err)
 			return []RunProblemResult{{Result: JudgeUnknown, Error: err}}
