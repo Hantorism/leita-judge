@@ -86,20 +86,6 @@ func (jr JudgeResultEnum) String() string {
 	}[jr]
 }
 
-type JudgeTypeEnum int
-
-const (
-	JudgeSubmit JudgeTypeEnum = iota
-	JudgeRun
-)
-
-func (jt JudgeTypeEnum) String() string {
-	return map[JudgeTypeEnum]string{
-		JudgeSubmit: "submit",
-		JudgeRun:    "run",
-	}[jt]
-}
-
 type GetProblemInfoDAO struct {
 	TimeLimit   int
 	MemoryLimit int

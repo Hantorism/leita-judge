@@ -7,8 +7,6 @@ import (
 	"strconv"
 	"strings"
 
-	. "leita/src/entities"
-
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/joho/godotenv"
 )
@@ -100,10 +98,10 @@ func RandomInt(min, max int) int {
 	return min + rand.Intn(max-min)
 }
 
-func ReplaceCommand(args []string, judgeType JudgeTypeEnum, submitID int) []string {
+func ReplaceCommand(args []string, judgeType string, submitID int) []string {
 	replaced := make([]string, len(args))
 	for i, arg := range args {
-		arg = strings.ReplaceAll(arg, "{JUDGE_TYPE}", judgeType.String())
+		arg = strings.ReplaceAll(arg, "{JUDGE_TYPE}", judgeType)
 		replaced[i] = strings.ReplaceAll(arg, "{SUBMIT_ID}", strconv.Itoa(submitID))
 	}
 	return replaced
