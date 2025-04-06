@@ -323,28 +323,31 @@ func judgeSubmit(runCmd []string, submitId int, timeLimit, memoryLimit int) (Jud
 		log.Info("사용 메모리: ", usedMemory, "KB")
 		judgeResult := checkDifference(executeContents, outputContents)
 		judgeResults = append(judgeResults, judgeResult)
-		if i != 0 {
-			usedTimes = append(usedTimes, usedTime)
-		}
+		usedTimes = append(usedTimes, usedTime)
 		usedMemories = append(usedMemories, usedMemory)
 	}
 
-	usedTime := Sum(usedTimes) / (int64(testCaseNum) - 1)
+	usedTime := Sum(usedTimes[1:]) / (int64(testCaseNum) - 1)
 	usedMemory := Sum(usedMemories) / int64(testCaseNum)
 
 	if !All(judgeResults) {
-		log.Info("--------------------------------")
-		log.Info("문제를 맞추지 못했습니다.")
-		log.Info("평균 사용 시간: ", usedTime, "ms")
-		log.Info("평균 사용 메모리: ", usedMemory, "KB")
+		printJudgeSubmitResult(false, usedTime, usedMemory)
 		return JudgeWrong, usedTime, usedMemory, nil
 	}
 
+	printJudgeSubmitResult(true, usedTime, usedMemory)
+	return JudgeCorrect, usedTime, usedMemory, nil
+}
+
+func printJudgeSubmitResult(isCorrect bool, usedTime, usedMemory int64) {
 	log.Info("--------------------------------")
-	log.Info("문제를 맞췄습니다!")
+	if isCorrect {
+		log.Info("문제를 맞췄습니다!")
+	} else {
+		log.Info("문제를 맞추지 못했습니다.")
+	}
 	log.Info("평균 사용 시간: ", usedTime, "ms")
 	log.Info("평균 사용 메모리: ", usedMemory, "KB")
-	return JudgeCorrect, usedTime, usedMemory, nil
 }
 
 func judgeRun(runCmd []string, submitId int, timeLimit, memoryLimit int) []RunProblemResult {
