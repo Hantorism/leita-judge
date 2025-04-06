@@ -42,23 +42,19 @@ func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 	runCmd := dto.RunCmd
 	deleteCmd := dto.DeleteCmd
 
-	result := JudgeUnknown
-
 	problemInfo, err := service.repository.GetProblemInfo(problemId)
 	if err != nil {
 		log.Error(err)
-		return result, 0, 0, err
+		return JudgeUnknown, 0, 0, err
 	}
 	timeLimit := problemInfo.TimeLimit
 	memoryLimit := problemInfo.MemoryLimit
-	var usedTime int64
-	var usedMemory int64
 
 	printSubmitProblemInfo(language, submitId, problemId, code, timeLimit, memoryLimit)
 
 	if err = saveSubmitTestCases(service, submitId, problemId); err != nil {
 		log.Error(err)
-		return result, 0, 0, err
+		return JudgeUnknown, 0, 0, err
 	}
 
 	defer func() {
@@ -69,7 +65,7 @@ func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 		}
 	}()
 
-	result, err = buildSource(submitId, language, "submit", code, buildCmd)
+	result, err := buildSource(submitId, language, "submit", code, buildCmd)
 	if err != nil {
 		log.Error(err)
 		return result, 0, 0, err
@@ -82,7 +78,7 @@ func (service *ProblemService) SubmitProblem(dto SubmitProblemDTO) (JudgeResultE
 		}
 	}()
 
-	result, usedTime, usedMemory, err = judgeSubmit(runCmd, submitId, timeLimit, memoryLimit)
+	result, usedTime, usedMemory, err := judgeSubmit(runCmd, submitId, timeLimit, memoryLimit)
 	if err != nil {
 		log.Error(err)
 		return result, 0, 0, err
@@ -101,12 +97,10 @@ func (service *ProblemService) RunProblem(dto RunProblemDTO) []RunProblemResult 
 	runCmd := dto.RunCmd
 	deleteCmd := dto.DeleteCmd
 
-	result := JudgeUnknown
-
 	problemInfo, err := service.repository.GetProblemInfo(problemId)
 	if err != nil {
 		log.Error(err)
-		return []RunProblemResult{{Result: result, Error: err}}
+		return []RunProblemResult{{Result: JudgeUnknown, Error: err}}
 	}
 	timeLimit := problemInfo.TimeLimit
 	memoryLimit := problemInfo.MemoryLimit
@@ -115,10 +109,10 @@ func (service *ProblemService) RunProblem(dto RunProblemDTO) []RunProblemResult 
 
 	if err = saveRunTestCases(submitId, testCases); err != nil {
 		log.Error(err)
-		return []RunProblemResult{{Result: result, Error: err}}
+		return []RunProblemResult{{Result: JudgeUnknown, Error: err}}
 	}
 
-	result, err = buildSource(submitId, language, "run", code, buildCmd)
+	result, err := buildSource(submitId, language, "run", code, buildCmd)
 	if err != nil {
 		log.Error(err)
 		return []RunProblemResult{{Result: result, Error: err}}
