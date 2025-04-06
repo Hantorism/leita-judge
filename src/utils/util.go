@@ -110,3 +110,11 @@ func ReplaceCommand(args []string, judgeType string, submitID int) []string {
 	}
 	return replaced
 }
+
+func RemoveLineFeed(output []byte) []byte {
+	if len(output) > 0 && output[len(output)-1] == 10 {
+		return output[:len(output)-1]
+	}
+
+	return output
+}

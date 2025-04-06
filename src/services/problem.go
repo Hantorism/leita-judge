@@ -391,14 +391,6 @@ func judgeRun(runCmd []string, submitId int, timeLimit, memoryLimit int) []RunPr
 	return results
 }
 
-func removeLineFeed(output []byte) []byte {
-	if len(output) > 0 && output[len(output)-1] == 10 {
-		return output[:len(output)-1]
-	}
-
-	return output
-}
-
 func executeProgram(runCmd []string, inputContents []byte, timeLimit, memoryLimit int) (JudgeResultEnum, []byte, int64, int64, error) {
 	log.Info("프로그램 실행 중...")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeLimit)*time.Millisecond)
@@ -433,7 +425,7 @@ func executeProgram(runCmd []string, inputContents []byte, timeLimit, memoryLimi
 	}
 
 	output := outputBuffer.Bytes()
-	output = removeLineFeed(output)
+	output = RemoveLineFeed(output)
 
 	return JudgeCorrect, output, usedTime, 0, nil
 }
