@@ -15,7 +15,11 @@ var envMap = make(map[string]string)
 
 func DecodeBase64(data []byte) []byte {
 	decodedData := make([]byte, base64.StdEncoding.DecodedLen(len(data)))
-	n, _ := base64.StdEncoding.Decode(decodedData, data)
+	n, err := base64.StdEncoding.Decode(decodedData, data)
+	if err != nil {
+		log.Error(err)
+		return []byte{}
+	}
 	decodedData = decodedData[:n]
 
 	return decodedData
