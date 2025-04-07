@@ -7,8 +7,10 @@ type SubmitProblemRequest struct {
 }
 
 type SubmitProblemResponse struct {
-	Result string `json:"result"`
-	Error  string `json:"error"`
+	Result     string `json:"result"`
+	Error      string `json:"error"`
+	UsedTime   int64  `json:"usedTime"`
+	UsedMemory int64  `json:"usedMemory"`
 }
 
 type SubmitProblemDTO struct {
