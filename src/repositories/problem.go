@@ -38,24 +38,6 @@ func (repository *ProblemRepository) GetProblemInfo(problemId int) (GetProblemIn
 	return dto, nil
 }
 
-//func (repository *ProblemRepository) SaveSubmitResult(dto SaveSubmitResultDTO) error {
-//	result := dto.Result
-//	usedMemory := dto.UsedMemory
-//	usedTime := dto.UsedTime
-//	submitId := dto.SubmitId
-//
-//	db := repository.dataSource.GetDatabase()
-//
-//	query := "UPDATE judge SET result = ?, used_memory = ?, used_time = ? WHERE id = ?;"
-//
-//	if _, err := db.Exec(query, result, usedMemory, usedTime, submitId); err != nil {
-//		log.Error(err)
-//		return err
-//	}
-//
-//	return nil
-//}
-
 func (repository *ProblemRepository) SaveCode(path string, code []byte) error {
 	os := repository.dataSource.GetObjectStorage()
 	if err := os.PutObject(path, code); err != nil {

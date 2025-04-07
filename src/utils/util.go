@@ -15,7 +15,11 @@ var envMap = make(map[string]string)
 
 func DecodeBase64(data []byte) []byte {
 	decodedData := make([]byte, base64.StdEncoding.DecodedLen(len(data)))
-	n, _ := base64.StdEncoding.Decode(decodedData, data)
+	n, err := base64.StdEncoding.Decode(decodedData, data)
+	if err != nil {
+		log.Error(err)
+		return []byte{}
+	}
 	decodedData = decodedData[:n]
 
 	return decodedData
@@ -105,4 +109,12 @@ func ReplaceCommand(args []string, judgeType string, submitID int) []string {
 		replaced[i] = strings.ReplaceAll(arg, "{SUBMIT_ID}", strconv.Itoa(submitID))
 	}
 	return replaced
+}
+
+func RemoveLineFeed(output []byte) []byte {
+	if len(output) > 0 && output[len(output)-1] == 10 {
+		return output[:len(output)-1]
+	}
+
+	return output
 }
