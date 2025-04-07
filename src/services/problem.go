@@ -292,6 +292,9 @@ func judgeSubmit(runCmd []string, submitId int, timeLimit, memoryLimit int) (Jud
 		log.Error(err)
 		return JudgeUnknown, 0, 0, err
 	}
+	if testCaseNum <= 1 {
+		return JudgeUnknown, 0, 0, errors.New("not enough testcases")
+	}
 
 	judgeResults := make([]bool, 0, testCaseNum)
 	usedTimes := make([]int64, 0, testCaseNum)
