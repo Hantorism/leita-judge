@@ -111,10 +111,15 @@ func ReplaceCommand(args []string, judgeType string, submitID int) []string {
 	return replaced
 }
 
-func RemoveLineFeed(output []byte) []byte {
-	if len(output) > 0 && output[len(output)-1] == 10 {
-		return output[:len(output)-1]
+func TrimAllTrailingWhitespace(output []byte) []byte {
+	last := len(output)
+	for last > 0 {
+		switch output[last-1] {
+		case '\n', '\r', '\t', ' ':
+			last--
+		default:
+			return output[:last]
+		}
 	}
-
-	return output
+	return output[:last]
 }

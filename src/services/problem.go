@@ -431,7 +431,7 @@ func executeProgram(runCmd []string, inputContents []byte, timeLimit, memoryLimi
 	}
 
 	output := outputBuffer.Bytes()
-	output = RemoveLineFeed(output)
+	output = TrimAllTrailingWhitespace(output)
 
 	return JudgeCorrect, output, usedTime, 0, nil
 }
