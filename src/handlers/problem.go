@@ -113,6 +113,7 @@ func (handler *ProblemHandler) RunProblem() fiber.Handler {
 				{
 					Result: "",
 					Error:  err.Error(),
+					Output: "",
 				},
 			})
 		}
@@ -148,7 +149,8 @@ func (handler *ProblemHandler) RunProblem() fiber.Handler {
 			}
 			responses = append(responses, RunProblemResponse{
 				Result: result.Result.String(),
-				Error: errMsg,
+				Error:  errMsg,
+				Output: result.Output,
 			})
 		}
 
