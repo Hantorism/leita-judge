@@ -391,7 +391,7 @@ func judgeRun(runCmd []string, submitId int, timeLimit, memoryLimit int) []RunPr
 		if isSame {
 			result = JudgeCorrect
 		}
-		results = append(results, RunProblemResult{Result: result})
+		results = append(results, RunProblemResult{Result: result, Output: string(EncodeBase64(executeContents))})
 	}
 
 	return results

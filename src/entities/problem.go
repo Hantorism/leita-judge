@@ -39,6 +39,7 @@ type RunProblemRequest struct {
 type RunProblemResponse struct {
 	Result string `json:"result"`
 	Error  string `json:"error"`
+	Output string `json:"output"`
 }
 
 type TestCase struct {
@@ -60,6 +61,7 @@ type RunProblemDTO struct {
 type RunProblemResult struct {
 	Result JudgeResultEnum
 	Error  error
+	Output string
 }
 
 type JudgeResultEnum int
