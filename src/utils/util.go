@@ -123,3 +123,10 @@ func TrimAllTrailingWhitespace(output []byte) []byte {
 	}
 	return output[:last]
 }
+
+func ErrStrIfNotNil(err error) string {
+	if err != nil {
+		return err.Error()
+	}
+	return ""
+}
