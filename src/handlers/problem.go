@@ -76,13 +76,9 @@ func (handler *ProblemHandler) SubmitProblem() fiber.Handler {
 			})
 		}
 
-		errMsg := ""
-		if err != nil {
-			errMsg = err.Error()
-		}
 		return c.Status(fiber.StatusOK).JSON(SubmitProblemResponse{
 			Result:     result.String(),
-			Error:      errMsg,
+			Error: ErrStrIfNotNil(err),
 			UsedTime:   usedTime,
 			UsedMemory: usedMemory,
 		})
@@ -136,13 +132,9 @@ func (handler *ProblemHandler) RunProblem() fiber.Handler {
 
 		responses := make([]RunProblemResponse, 0, len(results))
 		for _, result := range results {
-			errMsg := ""
-			if result.Error != nil {
-				errMsg = result.Error.Error()
-			}
 			responses = append(responses, RunProblemResponse{
 				Result: result.Result.String(),
-				Error:  errMsg,
+				Error: ErrStrIfNotNil(result.Error),
 				Output: result.Output,
 			})
 		}
