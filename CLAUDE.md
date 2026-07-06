@@ -12,7 +12,7 @@ Leita Judge는 온라인 저지(online judge) 시스템의 코드 실행/채점 
 # 의존성 설치
 go mod download
 
-# 로컬 실행 (.env 파일 필요, 아래 환경변수 참고)
+# 로컬 실행 (.env 파일 필요)
 go run .
 
 # 빌드
@@ -20,6 +20,12 @@ go build -o server .
 
 # Swagger 문서 재생성 (go.mod에 tool로 선언되어 있음, main.go 상단 주석 기반으로 docs/ 생성)
 go tool swag init
+
+# 모든 의존성을 최신 minor/patch 버전으로 업데이트 (./... 없이 go get -u만 실행하면 루트 패키지만 대상이 됨)
+go get -u ./...
+
+# 업데이트 후 go.mod/go.sum 정리 (사용하지 않는 의존성 제거, 필요한 것 추가)
+go mod tidy
 ```
 
 테스트 코드(`*_test.go`)는 현재 저장소에 존재하지 않는다.
