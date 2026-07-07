@@ -26,9 +26,27 @@ go get -u ./...
 
 # 업데이트 후 go.mod/go.sum 정리 (사용하지 않는 의존성 제거, 필요한 것 추가)
 go mod tidy
+
+# 테스트 실행
+go test ./src/...
+
+# 테스트 실행 (테스트별 상세 결과 출력)
+go test -v ./src/...
+
+# 테스트 실행 (커버리지 % 표시)
+go test -cover ./src/...
+
+# E2E 테스트 실행 (실제 서버를 로컬에 띄우고 진짜 HTTP 요청으로 검증. 로컬에 언어별 컴파일러/런타임 + OCI 자격증명 필요)
+go test -tags=e2e ./test/...
 ```
 
-테스트 코드(`*_test.go`)는 현재 저장소에 존재하지 않는다.
+## 테스트 작성 규칙
+
+"어떤 함수에 어떤 입력을 넣으면 처리를 거쳐서 어떤 출력이 나와야 한다" 형식으로 유닛 테스트 작성을 요청하면, 그 스펙을 바로 Go 테스트 코드로 옮긴다. [src/language/language_test.go](src/language/language_test.go), [src/service/problem/service_test.go](src/service/problem/service_test.go)에 이미 있는 패턴을 따른다:
+- 테이블 드리븐 테스트(케이스를 구조체 슬라이스로 나열하고 `t.Run`으로 서브테스트 실행)
+- unexported 식별자(`allTrue`, `checkDifference` 등)를 테스트해야 하면 `package problem_test`가 아닌 `package problem`(내부 테스트)으로 작성
+
+"서버를 로컬에 띄우고 curl/API 호출로 어떤 요청을 하면 어떤 응답이 나와야 한다" 형식으로 e2e 테스트 작성을 요청하면 [test/e2e_test.go](test/e2e_test.go)의 패턴을 따라 E2E 테스트로 작성한다: `//go:build e2e` 빌드 태그로 일반 테스트와 분리하고, `route.RegisterRoutes`로 실제 서비스(진짜 Executor/파일저장소/OCI)를 그대로 띄운 뒤 `:0`으로 랜덤 포트를 확보(`OnListen` 훅으로 캡처)해 진짜 `net/http` 클라이언트로 요청한다. `submit` 엔드포인트는 OCI 버킷에 실제 문제 데이터가 있어야 검증 가능하므로, 요청 페이로드만으로 자기완결적인 `run` 엔드포인트 위주로 작성한다. 실행할 때마다 `run/{submitId}/` 디렉터리가 실제로 남고(응답에 submitId가 없어 자동 정리 불가) 이건 정상이니 놀라지 않는다.
 
 ## Architecture
 

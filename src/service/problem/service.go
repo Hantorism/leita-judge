@@ -66,12 +66,6 @@ func (service *Service) SubmitProblem(dto entity.SubmitProblemDTO) (entity.Judge
 		return entity.JudgeUnknown, 0, 0, err
 	}
 
-	result, err := service.exec.Build(buildCmd)
-	if err != nil {
-		log.Error(err)
-		return result, 0, 0, err
-	}
-
 	defer func() {
 		if err := service.exec.Delete(deleteCmd); err != nil {
 			log.Error(err)
@@ -85,6 +79,12 @@ func (service *Service) SubmitProblem(dto entity.SubmitProblemDTO) (entity.Judge
 			log.Error(err)
 		}
 	}()
+
+	result, err := service.exec.Build(buildCmd)
+	if err != nil {
+		log.Error(err)
+		return result, 0, 0, err
+	}
 
 	result, usedTime, usedMemory, err := service.judgeSubmit(runCmd, submitId, timeLimit, memoryLimit)
 	if err != nil {
@@ -125,17 +125,17 @@ func (service *Service) RunProblem(dto entity.RunProblemDTO) []entity.RunProblem
 		return []entity.RunProblemResult{{Result: entity.JudgeUnknown, Error: err}}
 	}
 
-	result, err := service.exec.Build(buildCmd)
-	if err != nil {
-		log.Error(err)
-		return []entity.RunProblemResult{{Result: result, Error: err}}
-	}
-
 	defer func() {
 		if err := service.exec.Delete(deleteCmd); err != nil {
 			log.Error(err)
 		}
 	}()
+
+	result, err := service.exec.Build(buildCmd)
+	if err != nil {
+		log.Error(err)
+		return []entity.RunProblemResult{{Result: result, Error: err}}
+	}
 
 	return service.judgeRun(runCmd, submitId, timeLimit, memoryLimit)
 }
