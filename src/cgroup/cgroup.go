@@ -159,10 +159,24 @@ func cleanupLeftovers(podDir string) {
 		}
 		dir := filepath.Join(podDir, entry.Name())
 		killCgroup(dir)
-		if err := os.Remove(dir); err != nil {
+		if err := removeDirWithRetry(dir); err != nil {
 			log.Warn("잔존 cgroup 정리 실패: ", err)
 		}
 	}
+}
+
+// removeDirWithRetry는 cgroup 디렉터리를 재시도하며 삭제한다. cgroup.kill의
+// 프로세스 종료가 비동기라 직후의 rmdir은 EBUSY로 실패할 수 있다.
+func removeDirWithRetry(dir string) error {
+	var err error
+	for i := 0; i < 5; i++ {
+		err = os.Remove(dir)
+		if err == nil || errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	return err
 }
 
 // killCgroup은 cgroup.kill이 존재하면(실제 cgroupfs) 하위 프로세스를 일괄 종료한다.
@@ -229,19 +243,8 @@ func (s *fsSession) OOMKilled() (bool, error) {
 func (s *fsSession) Close() error {
 	killCgroup(s.dir)
 	closeErr := s.fd.Close()
-
-	var removeErr error
-	for i := 0; i < 5; i++ {
-		removeErr = os.Remove(s.dir)
-		if removeErr == nil || errors.Is(removeErr, os.ErrNotExist) {
-			removeErr = nil
-			break
-		}
-		// 프로세스 종료 직후에는 커널 정리가 끝나지 않아 EBUSY가 날 수 있다.
-		time.Sleep(10 * time.Millisecond)
-	}
-	if removeErr != nil {
-		return fmt.Errorf("세션 cgroup 삭제 실패: %w", removeErr)
+	if err := removeDirWithRetry(s.dir); err != nil {
+		return fmt.Errorf("세션 cgroup 삭제 실패: %w", err)
 	}
 	return closeErr
 }
