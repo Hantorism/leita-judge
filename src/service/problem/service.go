@@ -89,7 +89,7 @@ func (service *Service) SubmitProblem(dto entity.SubmitProblemDTO) (entity.Judge
 	result, usedTime, usedMemory, err := service.judgeSubmit(runCmd, submitId, timeLimit, memoryLimit)
 	if err != nil {
 		log.Error(err)
-		return result, 0, 0, err
+		return result, usedTime, usedMemory, err
 	}
 
 	return result, usedTime, usedMemory, nil
@@ -188,10 +188,10 @@ func (service *Service) judgeSubmit(runCmd []string, submitId int, timeLimit, me
 			return entity.JudgeUnknown, 0, 0, err
 		}
 
-		result, executeContents, usedTime, usedMemory, err := service.exec.Run(runCmd, inputContents, timeLimit)
+		result, executeContents, usedTime, usedMemory, err := service.exec.Run(runCmd, inputContents, timeLimit, memoryLimit)
 		if err != nil {
 			log.Error(err)
-			return result, 0, 0, err
+			return result, usedTime, usedMemory, err
 		}
 
 		outputData, err := service.fileRepo.ReadOutput(submitId, i, "submit")
@@ -212,13 +212,8 @@ func (service *Service) judgeSubmit(runCmd []string, submitId int, timeLimit, me
 		usedMemories = append(usedMemories, usedMemory)
 	}
 
-	usedTime := int64(0)
-	if testCaseNum > 1 {
-		usedTime = sumInt64(usedTimes[1:]) / (int64(testCaseNum) - 1)
-	} else if testCaseNum == 1 {
-		usedTime = usedTimes[0]
-	}
-	usedMemory := sumInt64(usedMemories) / int64(testCaseNum)
+	usedTime := averageExcludingWarmup(usedTimes)
+	usedMemory := averageExcludingWarmup(usedMemories)
 
 	if !allTrue(judgeResults) {
 		printJudgeSubmitResult(false, usedTime, usedMemory)
@@ -253,7 +248,7 @@ func (service *Service) judgeRun(runCmd []string, submitId int, timeLimit, memor
 			return []entity.RunProblemResult{{Result: entity.JudgeUnknown, Error: err}}
 		}
 
-		result, executeContents, usedTime, usedMemory, err := service.exec.Run(runCmd, inputContents, timeLimit)
+		result, executeContents, usedTime, usedMemory, err := service.exec.Run(runCmd, inputContents, timeLimit, memoryLimit)
 		if err != nil {
 			log.Error(err)
 			return []entity.RunProblemResult{{Result: result, Error: err}}
@@ -315,6 +310,18 @@ func sumInt64(s []int64) int64 {
 		sum += v
 	}
 	return sum
+}
+
+// averageExcludingWarmup은 첫 번째 테스트케이스(워밍업)를 제외한 평균을 구한다.
+// 시간은 JIT/캐시 예열, 메모리는 페이지 캐시 첫 적재 비용이 첫 케이스에 몰리기 때문이다.
+func averageExcludingWarmup(s []int64) int64 {
+	if len(s) > 1 {
+		return sumInt64(s[1:]) / int64(len(s)-1)
+	}
+	if len(s) == 1 {
+		return s[0]
+	}
+	return 0
 }
 
 func printSubmitProblemInfo(lang string, submitId int, problemId string, code []byte, timeLimit, memoryLimit int) {
