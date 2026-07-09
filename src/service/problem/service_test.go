@@ -35,7 +35,7 @@ func (f *fakeExecutor) Build(buildCmd []string) (entity.JudgeResultEnum, error) 
 	return f.buildResult, f.buildErr
 }
 
-func (f *fakeExecutor) Run(runCmd []string, input []byte, timeLimit int) (entity.JudgeResultEnum, []byte, int64, int64, error) {
+func (f *fakeExecutor) Run(runCmd []string, input []byte, timeLimit, memoryLimit int) (entity.JudgeResultEnum, []byte, int64, int64, error) {
 	r := f.runResults[f.runCalls]
 	f.runCalls++
 	return r.result, r.output, r.usedTime, r.usedMemory, r.err
@@ -110,40 +110,46 @@ func TestSubmitProblem(t *testing.T) {
 		{
 			name: "정답: 모든 테스트케이스 일치",
 			fileRepo: &fakeFileRepo{
-				testCaseCount: 2,
-				inputs:        [][]byte{[]byte(b64("in0")), []byte(b64("in1"))},
-				outputs:       [][]byte{[]byte(b64("3")), []byte(b64("7"))},
+				testCaseCount: 5,
+				inputs:        [][]byte{[]byte(b64("in0")), []byte(b64("in1")), []byte(b64("in2")), []byte(b64("in3")), []byte(b64("in4"))},
+				outputs:       [][]byte{[]byte(b64("3")), []byte(b64("7")), []byte(b64("11")), []byte(b64("15")), []byte(b64("19"))},
 			},
 			exec: &fakeExecutor{
 				buildResult: entity.JudgeCorrect,
 				runResults: []runResult{
 					{result: entity.JudgeCorrect, output: []byte("3"), usedTime: 100, usedMemory: 1000},
-					{result: entity.JudgeCorrect, output: []byte("7"), usedTime: 300, usedMemory: 3000},
+					{result: entity.JudgeCorrect, output: []byte("7"), usedTime: 200, usedMemory: 2000},
+					{result: entity.JudgeCorrect, output: []byte("11"), usedTime: 300, usedMemory: 3000},
+					{result: entity.JudgeCorrect, output: []byte("15"), usedTime: 400, usedMemory: 4000},
+					{result: entity.JudgeCorrect, output: []byte("19"), usedTime: 500, usedMemory: 5000},
 				},
 			},
 			wantResult:        entity.JudgeCorrect,
-			wantUsedTime:      300, // 워밍업(첫 케이스 100ms) 제외 평균
-			wantUsedMemory:    2000,
+			wantUsedTime:      350,  // 워밍업(첫 케이스 100ms) 제외 평균 (200+300+400+500)/4
+			wantUsedMemory:    3500, // 메모리도 워밍업(첫 케이스 1000KB) 제외 평균
 			wantDeleteCalls:   1,
 			wantSaveCodeCalls: 1,
 		},
 		{
 			name: "오답: 워밍업 케이스만 불일치해도 전체 결과는 WRONG",
 			fileRepo: &fakeFileRepo{
-				testCaseCount: 2,
-				inputs:        [][]byte{[]byte(b64("in0")), []byte(b64("in1"))},
-				outputs:       [][]byte{[]byte(b64("3")), []byte(b64("7"))},
+				testCaseCount: 5,
+				inputs:        [][]byte{[]byte(b64("in0")), []byte(b64("in1")), []byte(b64("in2")), []byte(b64("in3")), []byte(b64("in4"))},
+				outputs:       [][]byte{[]byte(b64("3")), []byte(b64("7")), []byte(b64("11")), []byte(b64("15")), []byte(b64("19"))},
 			},
 			exec: &fakeExecutor{
 				buildResult: entity.JudgeCorrect,
 				runResults: []runResult{
 					{result: entity.JudgeCorrect, output: []byte("WRONG"), usedTime: 100, usedMemory: 1000},
-					{result: entity.JudgeCorrect, output: []byte("7"), usedTime: 300, usedMemory: 3000},
+					{result: entity.JudgeCorrect, output: []byte("7"), usedTime: 200, usedMemory: 2000},
+					{result: entity.JudgeCorrect, output: []byte("11"), usedTime: 300, usedMemory: 3000},
+					{result: entity.JudgeCorrect, output: []byte("15"), usedTime: 400, usedMemory: 4000},
+					{result: entity.JudgeCorrect, output: []byte("19"), usedTime: 500, usedMemory: 5000},
 				},
 			},
 			wantResult:        entity.JudgeWrong,
-			wantUsedTime:      300,
-			wantUsedMemory:    2000,
+			wantUsedTime:      350,
+			wantUsedMemory:    3500,
 			wantDeleteCalls:   1,
 			wantSaveCodeCalls: 1,
 		},
@@ -160,11 +166,11 @@ func TestSubmitProblem(t *testing.T) {
 			wantSaveCodeCalls: 1,
 		},
 		{
-			name: "Run 실패(타임아웃)",
+			name: "Run 실패(타임아웃): 첫 케이스에서 중단",
 			fileRepo: &fakeFileRepo{
-				testCaseCount: 1,
-				inputs:        [][]byte{[]byte(b64("in0"))},
-				outputs:       [][]byte{[]byte(b64("3"))},
+				testCaseCount: 5,
+				inputs:        [][]byte{[]byte(b64("in0")), []byte(b64("in1")), []byte(b64("in2")), []byte(b64("in3")), []byte(b64("in4"))},
+				outputs:       [][]byte{[]byte(b64("3")), []byte(b64("7")), []byte(b64("11")), []byte(b64("15")), []byte(b64("19"))},
 			},
 			exec: &fakeExecutor{
 				buildResult: entity.JudgeCorrect,
@@ -242,22 +248,31 @@ func TestRunProblem(t *testing.T) {
 			testCases: []entity.TestCase{
 				{Input: b64("in0"), Output: b64("3")},
 				{Input: b64("in1"), Output: b64("7")},
+				{Input: b64("in2"), Output: b64("11")},
+				{Input: b64("in3"), Output: b64("15")},
+				{Input: b64("in4"), Output: b64("19")},
 			},
 			fileRepo: &fakeFileRepo{
-				testCaseCount: 2,
-				inputs:        [][]byte{[]byte(b64("in0")), []byte(b64("in1"))},
-				outputs:       [][]byte{[]byte(b64("3")), []byte(b64("7"))},
+				testCaseCount: 5,
+				inputs:        [][]byte{[]byte(b64("in0")), []byte(b64("in1")), []byte(b64("in2")), []byte(b64("in3")), []byte(b64("in4"))},
+				outputs:       [][]byte{[]byte(b64("3")), []byte(b64("7")), []byte(b64("11")), []byte(b64("15")), []byte(b64("19"))},
 			},
 			exec: &fakeExecutor{
 				buildResult: entity.JudgeCorrect,
 				runResults: []runResult{
 					{result: entity.JudgeCorrect, output: []byte("3")},
 					{result: entity.JudgeCorrect, output: []byte("WRONG")},
+					{result: entity.JudgeCorrect, output: []byte("11")},
+					{result: entity.JudgeCorrect, output: []byte("15")},
+					{result: entity.JudgeCorrect, output: []byte("WRONG2")},
 				},
 			},
 			wantResults: []entity.RunProblemResult{
 				{Result: entity.JudgeCorrect, Output: b64("3")},
 				{Result: entity.JudgeWrong, Output: b64("WRONG")},
+				{Result: entity.JudgeCorrect, Output: b64("11")},
+				{Result: entity.JudgeCorrect, Output: b64("15")},
+				{Result: entity.JudgeWrong, Output: b64("WRONG2")},
 			},
 			wantDeleteCalls: 1,
 		},
