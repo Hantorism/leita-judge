@@ -40,3 +40,30 @@ func TestRunMeasuresMemory(t *testing.T) {
 		t.Errorf("usedMemory = %dKB, want 30720~92160KB (30MB 버퍼 + 고정비)", usedMemory)
 	}
 }
+
+// TestRunReportsMemoryOut은 memory.max를 초과하는 프로세스가 OOM kill되어
+// MEMORY_OUT으로 판정되는지 검증한다 (10MB 제한 vs dd 100MB 버퍼).
+func TestRunReportsMemoryOut(t *testing.T) {
+	monitor, err := cgroup.Setup()
+	if err != nil {
+		t.Skipf("cgroup을 쓸 수 없는 환경이라 skip: %v", err)
+	}
+
+	exec := NewOsExecutor(monitor)
+	result, _, _, usedMemory, err := exec.Run(
+		[]string{"dd", "if=/dev/zero", "of=/dev/null", "bs=100M", "count=1"},
+		nil,
+		10000,
+		10240, // 10MB
+	)
+	if result != entity.JudgeMemoryOut {
+		t.Errorf("result = %v, want MEMORY_OUT", result)
+	}
+	if err == nil {
+		t.Error("MEMORY_OUT은 에러와 함께 반환되어야 함")
+	}
+	// 측정값은 상한(10MB) 근처여야 한다.
+	if usedMemory < 8192 || usedMemory > 12288 {
+		t.Errorf("usedMemory = %dKB, want ~10240KB (memory.max 상한 근처)", usedMemory)
+	}
+}

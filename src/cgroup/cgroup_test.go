@@ -210,14 +210,14 @@ func TestNewSession(t *testing.T) {
 		return monitor.(*fsMonitor), root
 	}
 
-	t.Run("메모리 제한이 있으면 안전망 상한과 스왑 금지를 기록한다", func(t *testing.T) {
+	t.Run("메모리 제한이 있으면 memory.max와 스왑 금지를 기록한다", func(t *testing.T) {
 		monitor, root := newMonitor(t)
 		session, err := monitor.NewSession("1", 65536) // 64MB
 		if err != nil {
 			t.Fatal(err)
 		}
 		dir := filepath.Join(podDirOf(t, root), "1")
-		wantMax := strconv.FormatInt(int64(65536)*1024+safetyMarginBytes, 10)
+		wantMax := strconv.FormatInt(int64(65536)*1024, 10)
 		if got := readFakeFile(t, filepath.Join(dir, "memory.max")); got != wantMax {
 			t.Errorf("memory.max = %q, want %q", got, wantMax)
 		}
