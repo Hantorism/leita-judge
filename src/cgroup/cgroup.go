@@ -24,11 +24,6 @@ const (
 	// leafName은 로컬 Docker(private cgroupns)에서 "no internal processes" 규칙을
 	// 피하기 위해 서버 프로세스를 옮겨 둘 leaf cgroup 이름이다.
 	leafName = "main"
-
-	// safetyMarginBytes는 측정 전용 1차 구현의 안전망이다. 채점용 제한(MEMORY_OUT
-	// 판정 기준)은 언어별 마진 정책 결정 후 후속 PR에서 적용하고, 여기서는 폭주한
-	// 프로세스가 노드 메모리를 다 먹지 않도록 문제 제한 + 1GiB 상한만 건다.
-	safetyMarginBytes = int64(1) << 30
 )
 
 // Monitor는 채점 프로세스 1회 실행에 대한 메모리 측정 세션을 발급한다.
@@ -201,7 +196,9 @@ func (m *fsMonitor) NewSession(name string, memoryLimitKB int) (Session, error) 
 	}
 
 	if memoryLimitKB > 0 {
-		limit := int64(memoryLimitKB)*1024 + safetyMarginBytes
+		// 호출자(service)가 문제 제한 + 언어별 마진을 계산해서 넘긴다.
+		// 이 값을 초과하면 OOM kill → MEMORY_OUT으로 판정된다.
+		limit := int64(memoryLimitKB) * 1024
 		if err := os.WriteFile(filepath.Join(dir, "memory.max"), []byte(strconv.FormatInt(limit, 10)), 0o644); err != nil {
 			log.Warn("memory.max 설정 실패 (측정은 계속 진행): ", err)
 		}

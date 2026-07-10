@@ -56,6 +56,30 @@ var Commands = map[string]Command{
 	},
 }
 
+// memoryMarginKB는 언어 런타임의 고정 메모리 비용을 보상하기 위해 문제 메모리
+// 제한에 가산하는 값이다. a+b 프로그램 실측 베이스라인(C/C++ ~0.5MB, Go ~4.8MB,
+// Python ~5MB, JavaScript ~9MB, JVM ~38MB)에 여유를 더해 정했다.
+var memoryMarginKB = map[string]int{
+	"C":          16 * 1024,
+	"CPP":        16 * 1024,
+	"GO":         32 * 1024,
+	"PYTHON":     32 * 1024,
+	"JAVASCRIPT": 64 * 1024,
+	"JAVA":       128 * 1024,
+	"KOTLIN":     128 * 1024,
+	"SWIFT":      16 * 1024,
+}
+
+// MemoryLimitWithMargin은 문제 메모리 제한(KB)에 언어별 마진을 더해 반환한다.
+// 이 값이 cgroup memory.max로 설정되어, 초과 시 OOM kill → MEMORY_OUT 판정이 된다.
+// 마진 이내의 초과는 런타임 고정비로 간주해 허용하는 것이 정책 의도다.
+func MemoryLimitWithMargin(language string, memoryLimitKB int) int {
+	if memoryLimitKB <= 0 {
+		return memoryLimitKB
+	}
+	return memoryLimitKB + memoryMarginKB[language]
+}
+
 func FileExtension(language string) string {
 	switch language {
 	case "C":
