@@ -14,6 +14,10 @@ type SubmitProblemResponse struct {
 	UsedMemory int64  `json:"usedMemory"`
 }
 
+type SubmitProblemReceiptResponse struct {
+	Status string `json:"status"`
+}
+
 type SubmitProblemDTO struct {
 	ProblemId string
 	SubmitId  int
