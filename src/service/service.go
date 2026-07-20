@@ -26,7 +26,7 @@ func NewService() (*Service, error) {
 	}
 
 	exec := executor.NewOsExecutor(monitor)
-	problemService := problem.NewService(repository.ProblemRepository, repository.FileRepository, exec)
+	problemService := problem.NewService(repository.ProblemRepository, repository.FileRepository, exec, repository.RedisClient)
 
 	return &Service{
 		ProblemService: problemService,

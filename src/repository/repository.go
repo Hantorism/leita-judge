@@ -6,11 +6,13 @@ import (
 	"leita/src/repository/problem"
 
 	"github.com/gofiber/fiber/v3/log"
+	"github.com/redis/go-redis/v9"
 )
 
 type Repository struct {
 	ProblemRepository *problem.Repository
 	FileRepository    filerepo.Repository
+	RedisClient       *redis.Client
 }
 
 func NewRepository() (*Repository, error) {
@@ -23,5 +25,6 @@ func NewRepository() (*Repository, error) {
 	return &Repository{
 		ProblemRepository: problem.NewRepository(dataSource),
 		FileRepository:    filerepo.NewLocalRepository(),
+		RedisClient:       dataSource.GetRedisClient(),
 	}, nil
 }

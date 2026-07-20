@@ -2,10 +2,12 @@ package problem
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"errors"
 	"math"
 	"math/rand"
+	"os"
 	"path/filepath"
 	"strconv"
 
@@ -15,6 +17,7 @@ import (
 	filerepo "leita/src/repository/file"
 
 	"github.com/gofiber/fiber/v3/log"
+	"github.com/redis/go-redis/v9"
 )
 
 // storageRepository는 OCI 오브젝트 스토리지 접근을 추상화한다.
@@ -24,20 +27,29 @@ type storageRepository interface {
 }
 
 type Service struct {
-	storage  storageRepository
-	fileRepo filerepo.Repository
-	exec     executor.Executor
+	storage   storageRepository
+	fileRepo  filerepo.Repository
+	exec      executor.Executor
+	redis     *redis.Client
+	streamKey string
 }
 
 func NewService(
 	storage storageRepository,
 	fileRepo filerepo.Repository,
 	exec executor.Executor,
+	redisClient *redis.Client,
 ) *Service {
+	streamKey := os.Getenv("REDIS_STREAM_KEY")
+	if streamKey == "" {
+		streamKey = "judge-result-stream"
+	}
 	return &Service{
-		storage:  storage,
-		fileRepo: fileRepo,
-		exec:     exec,
+		storage:   storage,
+		fileRepo:  fileRepo,
+		exec:      exec,
+		redis:     redisClient,
+		streamKey: streamKey,
 	}
 }
 
@@ -361,4 +373,29 @@ func printJudgeSubmitResult(isCorrect bool, usedTime, usedMemory int64) {
 	}
 	log.Info("평균 사용 시간: ", usedTime, "ms")
 	log.Info("평균 사용 메모리: ", usedMemory, "KB")
+}
+
+func (service *Service) PublishJudgeResult(submitId int, result entity.JudgeResultEnum, usedTime, usedMemory int64, errStr string) error {
+	ctx := context.Background()
+
+	values := map[string]interface{}{
+		"submitId":   strconv.Itoa(submitId),
+		"result":     result.String(),
+		"error":      errStr,
+		"usedMemory": strconv.FormatInt(usedMemory, 10),
+		"usedTime":   strconv.FormatInt(usedTime, 10),
+	}
+
+	err := service.redis.XAdd(ctx, &redis.XAddArgs{
+		Stream: service.streamKey,
+		Values: values,
+	}).Err()
+
+	if err != nil {
+		log.Errorf("XAdd error: %v", err)
+		return err
+	}
+
+	log.Infof("Successfully published judge result for submit %d: %s", submitId, result.String())
+	return nil
 }
