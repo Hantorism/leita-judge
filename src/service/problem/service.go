@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"leita/src/entity"
 	"leita/src/executor"
@@ -376,7 +377,8 @@ func printJudgeSubmitResult(isCorrect bool, usedTime, usedMemory int64) {
 }
 
 func (service *Service) PublishJudgeResult(submitId int, result entity.JudgeResultEnum, usedTime, usedMemory int64, errStr string) error {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
 
 	values := map[string]interface{}{
 		"submitId":   strconv.Itoa(submitId),

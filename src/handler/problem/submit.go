@@ -9,6 +9,8 @@ import (
 	"github.com/gofiber/fiber/v3/log"
 )
 
+var judgeSemaphore = make(chan struct{}, 4)
+
 // SubmitProblem godoc
 //
 //	@Summary		Submit a problem solution
@@ -50,7 +52,9 @@ func (handler *Handler) SubmitProblem() fiber.Handler {
 
 		// 비동기로 고루틴 실행
 		go func() {
+			judgeSemaphore <- struct{}{}
 			defer func() {
+				<-judgeSemaphore
 				if r := recover(); r != nil {
 					log.Errorf("Panic in SubmitProblem goroutine for submit %d: %v", dto.SubmitId, r)
 					_ = handler.service.PublishJudgeResult(dto.SubmitId, entity.JudgeUnknown, 0, 0, "Server Panic during judging")
