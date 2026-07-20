@@ -8,6 +8,7 @@ import (
 type Service interface {
 	SubmitProblem(dto entity.SubmitProblemDTO) (entity.JudgeResultEnum, int64, int64, error)
 	RunProblem(dto entity.RunProblemDTO) []entity.RunProblemResult
+	PublishJudgeResult(submitId int, result entity.JudgeResultEnum, usedTime, usedMemory int64, errStr string) error
 }
 
 type Handler struct {

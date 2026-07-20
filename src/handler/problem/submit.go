@@ -18,25 +18,25 @@ import (
 //	@Tags			Problem
 //	@Param			problemId	path		string						true	"Problem ID"
 //	@Param			requestBody	body		entity.SubmitProblemRequest	true	"Solution code and metadata"
-//	@Success		200			{object}	entity.SubmitProblemResponse
-//	@Failure		400			{object}	entity.SubmitProblemResponse
-//	@Failure		500			{object}	entity.SubmitProblemResponse
+//	@Success		200			{object}	entity.SubmitProblemReceiptResponse
+//	@Failure		400			{object}	entity.SubmitProblemReceiptResponse
+//	@Failure		500			{object}	entity.SubmitProblemReceiptResponse
 //	@Router			/problem/submit/{problemId} [post]
 func (handler *Handler) SubmitProblem() fiber.Handler {
 	return func(c fiber.Ctx) error {
 		var req entity.SubmitProblemRequest
 		if err := c.Bind().Body(&req); err != nil {
 			log.Error(err)
-			return c.Status(fiber.StatusBadRequest).JSON(entity.SubmitProblemResponse{
-				Error: err.Error(),
+			return c.Status(fiber.StatusBadRequest).JSON(entity.SubmitProblemReceiptResponse{
+				Status: "FAILED_BINDING",
 			})
 		}
 
 		code, err := base64.StdEncoding.DecodeString(req.Code)
 		if err != nil {
 			log.Error(err)
-			return c.Status(fiber.StatusBadRequest).JSON(entity.SubmitProblemResponse{
-				Error: err.Error(),
+			return c.Status(fiber.StatusBadRequest).JSON(entity.SubmitProblemReceiptResponse{
+				Status: "FAILED_DECODING",
 			})
 		}
 
@@ -48,24 +48,28 @@ func (handler *Handler) SubmitProblem() fiber.Handler {
 			Limit:     req.Limit,
 		}
 
-		result, usedTime, usedMemory, err := handler.service.SubmitProblem(dto)
-		if result == entity.JudgeUnknown {
-			log.Error(err)
-			return c.Status(fiber.StatusInternalServerError).JSON(entity.SubmitProblemResponse{
-				Result: entity.JudgeUnknown.String(),
-				Error:  err.Error(),
-			})
-		}
+		// 비동기로 고루틴 실행
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Errorf("Panic in SubmitProblem goroutine for submit %d: %v", dto.SubmitId, r)
+					_ = handler.service.PublishJudgeResult(dto.SubmitId, entity.JudgeUnknown, 0, 0, "Server Panic during judging")
+				}
+			}()
 
-		errStr := ""
-		if err != nil {
-			errStr = err.Error()
-		}
-		return c.Status(fiber.StatusOK).JSON(entity.SubmitProblemResponse{
-			Result:     result.String(),
-			Error:      errStr,
-			UsedTime:   usedTime,
-			UsedMemory: usedMemory,
+			result, usedTime, usedMemory, err := handler.service.SubmitProblem(dto)
+			errStr := ""
+			if err != nil {
+				errStr = err.Error()
+			}
+			errPublish := handler.service.PublishJudgeResult(dto.SubmitId, result, usedTime, usedMemory, errStr)
+			if errPublish != nil {
+				log.Errorf("Failed to publish result to Redis for submit %d: %v", dto.SubmitId, errPublish)
+			}
+		}()
+
+		return c.Status(fiber.StatusOK).JSON(entity.SubmitProblemReceiptResponse{
+			Status: "RECEIVED",
 		})
 	}
 }
