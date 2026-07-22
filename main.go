@@ -22,8 +22,7 @@ import (
 // @BasePath		/api
 func main() {
 	if err := godotenv.Load(".env"); err != nil {
-		log.Fatal(err)
-		return
+		log.Info(err)
 	}
 
 	app := fiber.New()
