@@ -72,9 +72,19 @@ main.go
 ```
 
 - **entity** ([src/entity/problem.go](src/entity/problem.go)) — 요청/응답 DTO와 `JudgeResultEnum`(CORRECT/WRONG/COMPILE_ERROR/RUNTIME_ERROR/MEMORY_OUT/TIME_OUT) 등 도메인 타입 전체가 여기 모여 있다.
-- **language** ([src/language/language.go](src/language/language.go)) — 언어별 빌드/실행/삭제 커맨드를 `{JUDGE_TYPE}`/`{SUBMIT_ID}` 플레이스홀더가 있는 템플릿으로 정의(`Commands` 맵). `ReplaceCommand`로 실제 경로를 채워 넣는다. 소스 파일명은 항상 `Main.{ext}`(`FileName` 상수)로 고정된다. 언어별 메모리 마진도 여기서 정의한다(`MemoryLimitWithMargin`: C/C++/Swift +16MB, Go/Python +32MB, JavaScript +64MB, Java/Kotlin +128MB) — 런타임 고정비(실측 베이스라인)를 보상해 언어 간 형평성을 맞추는 값으로, 마진 이내의 초과는 정책상 허용이다.
+- **language** ([src/language/language.go](src/language/language.go)) — 언어별 빌드/실행/삭제 커맨드를 `{JUDGE_TYPE}`/`{SUBMIT_ID}` 플레이스홀더가 있는 템플릿으로 정의(`Commands` 맵). `ReplaceCommand`로 실제 경로를 채워 넣는다. 소스 파일명은 항상 `Main.{ext}`(`FileName` 상수)로 고정된다. 언어별 **시간/메모리 버퍼**도 여기서 정의한다(`limitBuffers` 테이블 + `TimeLimitWithBuffer`/`MemoryLimitWithBuffer`). 런타임 고정비를 보상해 언어 간 형평성을 맞추는 값으로, 버퍼 이내의 초과는 정책상 허용이다.
+
+| 언어 | 시간 | 메모리 |
+|---|---|---|
+| C, CPP | 보정 없음 | 보정 없음 |
+| GO | +2초 | +32MB |
+| PYTHON, JAVASCRIPT | ×3 + 2초 | +32MB |
+| JAVA, KOTLIN | ×2 + 1초 | +128MB |
+| SWIFT | 보정 없음 | +16MB |
+
+**시간은 배수+가산, 메모리는 고정 가산**인 이유: 인터프리터의 느림은 작업량에 비례하지만, 메모리 오버헤드는 문제 제한과 무관한 상수(런타임 고정비 + GC 여유)다. C/C++에 보정을 주지 않는 것은 문제의 제한 자체가 C/C++ 기준으로 설계되기 때문이며, 마진을 주면 메모리 최적화 문제의 출제 의도가 깨진다. 시간 보정값은 BOJ 정책을, 메모리 보정값은 실측 오버헤드(C/C++ 0.3MB, Python 3.9MB, Go 6.1MB, JS 9.4MB, JVM 39.2MB)를 근거로 한다.
 - **cgroup** ([src/cgroup/cgroup.go](src/cgroup/cgroup.go)) — cgroup v2 기반 메모리 측정 계층. 테스트케이스 실행마다 `/sys/fs/cgroup/leita-judge/{pod}/{seq}`에 일회용 cgroup을 만들고, 채점 프로세스를 clone3(`CLONE_INTO_CGROUP`)로 그 안에서 시작시킨 뒤 종료 후 `memory.peak`을 읽는다(KB 단위). `{pod}`는 `os.Hostname()`(k8s 파드명/Docker 컨테이너 ID)으로, 같은 노드의 여러 judge 파드 간 격리 계층이다. `Setup()`이 시작 시 환경을 감지한다: `/proc/self/cgroup`이 `0::/`이면(로컬 Docker, private cgroupns) 루트 프로세스를 `main/` leaf로 옮겨 "no internal processes" 규칙을 회피하고, 아니면(k8s privileged + host cgroupns) 파드 계층만 만든다. 시작 시 자기 파드의 잔존 세션만 정리하며 다른 파드 디렉터리는 절대 건드리지 않는다. cgroup을 쓸 수 없으면(비-privileged 컨테이너, macOS) 경고 로그 후 측정값 0을 반환하는 폴백으로 기동한다. **측정 범위는 코드 실행(stdin~stdout)만이며 Build/Delete는 cgroup 밖에서 실행되어 절대 포함되지 않는다.**
-- **executor** ([src/executor/executor.go](src/executor/executor.go)) — `Executor` 인터페이스(Build/Run/Delete)의 실제 구현인 `OsExecutor`가 `os/exec`로 컴파일러/런타임 프로세스를 직접 구동한다. `Run`은 `context.WithTimeout`으로 제한 시간을 강제하고, cgroup 세션으로 메모리를 측정한다. `memory.max`에는 service가 계산한 **문제 제한 + 언어별 마진**(`language.MemoryLimitWithMargin`)이 걸리며, 초과하면 OOM kill로 `MEMORY_OUT`이 된다. 판정 우선순위는 **OOM(`JudgeMemoryOut`) → 타임아웃(`JudgeTimeOut`) → 비정상 종료(`JudgeRuntimeError`)** 순서다 — OOM kill은 SIGKILL이라 순서를 바꾸면 메모리 초과가 RUNTIME_ERROR나 TIME_OUT으로 오분류된다.
+- **executor** ([src/executor/executor.go](src/executor/executor.go)) — `Executor` 인터페이스(Build/Run/Delete)의 실제 구현인 `OsExecutor`가 `os/exec`로 컴파일러/런타임 프로세스를 직접 구동한다. `Run`은 `context.WithTimeout`으로 제한 시간을 강제하고, cgroup 세션으로 메모리를 측정한다. 시간·메모리 제한 모두 service가 **언어별 버퍼를 적용한 값**(`language.TimeLimitWithBuffer`/`MemoryLimitWithBuffer`)을 넘겨주며, 메모리 초과 시 OOM kill로 `MEMORY_OUT`이 된다. 응답의 `usedTime`/`usedMemory`는 버퍼와 무관한 실측값이다 — 버퍼는 판정에만 쓰인다. 판정 우선순위는 **OOM(`JudgeMemoryOut`) → 타임아웃(`JudgeTimeOut`) → 비정상 종료(`JudgeRuntimeError`)** 순서다 — OOM kill은 SIGKILL이라 순서를 바꾸면 메모리 초과가 RUNTIME_ERROR나 TIME_OUT으로 오분류된다.
 - **repository/file** ([src/repository/file/repository.go](src/repository/file/repository.go)) — 로컬 파일시스템에 소스 코드/테스트케이스를 저장하는 `Repository` 인터페이스(`LocalRepository` 구현). 경로 규칙은 `{judgeType}/{submitId}/Main.{ext}`, `{judgeType}/{submitId}/in/{i}.in`, `{judgeType}/{submitId}/out/{i}.out`.
 - **repository/problem** + **datasource** ([src/datasource/objectstorage.go](src/datasource/objectstorage.go)) — OCI Object Storage를 감싸는 계층. 문제의 정답 테스트케이스를 `problems/{problemId}/testcases`에서 읽어오고, 제출된 코드를 `submits/{submitId}/...`에 base64로 저장한다. **정책: 모든 문제는 최소 5개의 테스트케이스를 보장한다** — 문제 퀄리티를 위한 정책으로 문제 데이터 등록 단계에서 강제되며, 이 레포 코드에는 별도 검증 로직이 없다.
 - **service/problem** ([src/service/problem/service.go](src/service/problem/service.go)) — 채점 핵심 로직. 저장 → 빌드 → (테스트케이스별) 실행 → 출력 바이트 비교(`bytes.Equal`) → 결과 집계 순으로 진행하고, 빌드/삭제 실패 시에도 실행 파일 삭제(`Delete`)가 `defer`로 항상 시도된다.

@@ -26,6 +26,7 @@ type fakeExecutor struct {
 
 	runResults     []runResult
 	runCalls       int
+	gotTimeLimit   int
 	gotMemoryLimit int
 
 	deleteErr   error
@@ -37,6 +38,7 @@ func (f *fakeExecutor) Build(buildCmd []string) (entity.JudgeResultEnum, error) 
 }
 
 func (f *fakeExecutor) Run(runCmd []string, input []byte, timeLimit, memoryLimit int) (entity.JudgeResultEnum, []byte, int64, int64, error) {
+	f.gotTimeLimit = timeLimit
 	f.gotMemoryLimit = memoryLimit
 	r := f.runResults[f.runCalls]
 	f.runCalls++
@@ -231,9 +233,14 @@ func TestSubmitProblem(t *testing.T) {
 			if storage.saveCodeCalls != tt.wantSaveCodeCalls {
 				t.Errorf("SaveCode calls = %d, want %d", storage.saveCodeCalls, tt.wantSaveCodeCalls)
 			}
-			// PYTHON 제한 65536KB + 마진 32MB가 executor까지 전달돼야 한다.
-			if tt.exec.runCalls > 0 && tt.exec.gotMemoryLimit != 65536+32*1024 {
-				t.Errorf("memoryLimit = %d, want %d (제한 + PYTHON 마진)", tt.exec.gotMemoryLimit, 65536+32*1024)
+			// PYTHON 버퍼(시간 ×3+2초, 메모리 +32MB)가 executor까지 전달돼야 한다.
+			if tt.exec.runCalls > 0 {
+				if tt.exec.gotTimeLimit != 1000*3+2000 {
+					t.Errorf("timeLimit = %d, want %d (제한 × PYTHON 배수 + 가산)", tt.exec.gotTimeLimit, 1000*3+2000)
+				}
+				if tt.exec.gotMemoryLimit != 65536+32*1024 {
+					t.Errorf("memoryLimit = %d, want %d (제한 + PYTHON 버퍼)", tt.exec.gotMemoryLimit, 65536+32*1024)
+				}
 			}
 		})
 	}
