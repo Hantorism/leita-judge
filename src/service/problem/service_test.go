@@ -201,7 +201,9 @@ func TestSubmitProblem(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			storage := &fakeStorage{}
-			service := NewService(storage, tt.fileRepo, tt.exec)
+			// 채점 결과 발행(PublishJudgeResult)은 핸들러에서만 호출되므로
+			// 채점 로직 테스트에서는 redis 클라이언트가 필요 없다.
+			service := NewService(storage, tt.fileRepo, tt.exec, nil)
 
 			result, usedTime, usedMemory, err := service.SubmitProblem(entity.SubmitProblemDTO{
 				ProblemId: "1",
@@ -313,7 +315,7 @@ func TestRunProblem(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			service := NewService(&fakeStorage{}, tt.fileRepo, tt.exec)
+			service := NewService(&fakeStorage{}, tt.fileRepo, tt.exec, nil)
 
 			results := service.RunProblem(entity.RunProblemDTO{
 				ProblemId: "1",
