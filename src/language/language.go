@@ -56,28 +56,62 @@ var Commands = map[string]Command{
 	},
 }
 
-// memoryMarginKB는 언어 런타임의 고정 메모리 비용을 보상하기 위해 문제 메모리
-// 제한에 가산하는 값이다. a+b 프로그램 실측 베이스라인(C/C++ ~0.5MB, Go ~4.8MB,
-// Python ~5MB, JavaScript ~9MB, JVM ~38MB)에 여유를 더해 정했다.
-var memoryMarginKB = map[string]int{
-	"C":          16 * 1024,
-	"CPP":        16 * 1024,
-	"GO":         32 * 1024,
-	"PYTHON":     32 * 1024,
-	"JAVASCRIPT": 64 * 1024,
-	"JAVA":       128 * 1024,
-	"KOTLIN":     128 * 1024,
-	"SWIFT":      16 * 1024,
+// limitBuffer는 언어 런타임의 고정 비용을 보상해 언어 간 형평성을 맞추는 보정값이다.
+// 시간은 인터프리터의 느림이 작업량에 비례하므로 배수+가산으로, 메모리는 런타임
+// 고정비가 문제 제한과 무관한 상수이므로 고정 가산으로만 보정한다.
+type limitBuffer struct {
+	timeMultiplier int // 시간 제한 배수 (1이면 배수 없음)
+	timeAddMs      int // 시간 제한 가산 (ms)
+	memoryAddKB    int // 메모리 제한 가산 (KB)
 }
 
-// MemoryLimitWithMargin은 문제 메모리 제한(KB)에 언어별 마진을 더해 반환한다.
+// limitBuffers의 시간 보정은 BOJ 정책(help.acmicpc.net/language/info)을 따르고,
+// 메모리 보정은 실측값으로 정했다. 30MB를 실제로 사용하는 풀이의 cgroup 오버헤드는
+// C/C++ 0.3MB, Python 3.9MB, Go 6.1MB, JavaScript 9.4MB, JVM 39.2MB였다.
+var limitBuffers = map[string]limitBuffer{
+	// 네이티브: 문제 제한 자체가 C/C++ 기준으로 설계되므로 보정하지 않는다.
+	// 마진을 주면 메모리 최적화 문제(16MB 제한 등)의 출제 의도가 깨진다.
+	"C":   {timeMultiplier: 1},
+	"CPP": {timeMultiplier: 1},
+	// Go: 오버헤드는 6MB지만 GC가 라이브 힙 2배까지 늘어난 뒤 수거(GOGC=100)해 여유가 필요하다.
+	"GO": {timeMultiplier: 1, timeAddMs: 2000, memoryAddKB: 32 * 1024},
+	// 인터프리터: 네이티브 대비 수십 배 느리다. JavaScript는 런타임 하한이 12MB라 마진이 필수.
+	"PYTHON":     {timeMultiplier: 3, timeAddMs: 2000, memoryAddKB: 32 * 1024},
+	"JAVASCRIPT": {timeMultiplier: 3, timeAddMs: 2000, memoryAddKB: 32 * 1024},
+	// JVM: 베이스라인 38MB + SerialGC 복사 공간. 실측상 +64MB가 최소 통과선이라 2배로 잡았다.
+	"JAVA":   {timeMultiplier: 2, timeAddMs: 1000, memoryAddKB: 128 * 1024},
+	"KOTLIN": {timeMultiplier: 2, timeAddMs: 1000, memoryAddKB: 128 * 1024},
+	// Swift: 네이티브지만 런타임 라이브러리가 있어 소폭만 가산한다 (현재 비활성 언어).
+	"SWIFT": {timeMultiplier: 1, memoryAddKB: 16 * 1024},
+}
+
+// bufferOf는 등록되지 않은 언어에 대해 보정 없음(배수 1, 가산 0)을 보장한다.
+func bufferOf(language string) limitBuffer {
+	buffer, ok := limitBuffers[language]
+	if !ok {
+		return limitBuffer{timeMultiplier: 1}
+	}
+	return buffer
+}
+
+// TimeLimitWithBuffer는 문제 시간 제한(ms)에 언어별 버퍼를 적용해 반환한다.
+// 이 값이 실행 데드라인이 되며, 초과하면 TIME_OUT으로 판정된다.
+func TimeLimitWithBuffer(language string, timeLimitMs int) int {
+	if timeLimitMs <= 0 {
+		return timeLimitMs
+	}
+	buffer := bufferOf(language)
+	return timeLimitMs*buffer.timeMultiplier + buffer.timeAddMs
+}
+
+// MemoryLimitWithBuffer는 문제 메모리 제한(KB)에 언어별 버퍼를 더해 반환한다.
 // 이 값이 cgroup memory.max로 설정되어, 초과 시 OOM kill → MEMORY_OUT 판정이 된다.
-// 마진 이내의 초과는 런타임 고정비로 간주해 허용하는 것이 정책 의도다.
-func MemoryLimitWithMargin(language string, memoryLimitKB int) int {
+// 버퍼 이내의 초과는 런타임 고정비로 간주해 허용하는 것이 정책 의도다.
+func MemoryLimitWithBuffer(language string, memoryLimitKB int) int {
 	if memoryLimitKB <= 0 {
 		return memoryLimitKB
 	}
-	return memoryLimitKB + memoryMarginKB[language]
+	return memoryLimitKB + bufferOf(language).memoryAddKB
 }
 
 func FileExtension(language string) string {

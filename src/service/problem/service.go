@@ -99,7 +99,11 @@ func (service *Service) SubmitProblem(dto entity.SubmitProblemDTO) (entity.Judge
 		return result, 0, 0, err
 	}
 
-	result, usedTime, usedMemory, err := service.judgeSubmit(runCmd, submitId, timeLimit, language.MemoryLimitWithMargin(lang, memoryLimit))
+	result, usedTime, usedMemory, err := service.judgeSubmit(
+		runCmd, submitId,
+		language.TimeLimitWithBuffer(lang, timeLimit),
+		language.MemoryLimitWithBuffer(lang, memoryLimit),
+	)
 	if err != nil {
 		log.Error(err)
 		return result, usedTime, usedMemory, err
@@ -150,7 +154,11 @@ func (service *Service) RunProblem(dto entity.RunProblemDTO) []entity.RunProblem
 		return []entity.RunProblemResult{{Result: result, Error: err}}
 	}
 
-	return service.judgeRun(runCmd, submitId, timeLimit, language.MemoryLimitWithMargin(lang, memoryLimit))
+	return service.judgeRun(
+		runCmd, submitId,
+		language.TimeLimitWithBuffer(lang, timeLimit),
+		language.MemoryLimitWithBuffer(lang, memoryLimit),
+	)
 }
 
 func (service *Service) saveSubmitTestCases(submitId int, problemId string) error {
