@@ -12,7 +12,10 @@ Leita Judge는 온라인 저지(online judge) 시스템의 코드 실행/채점 
 # 의존성 설치
 go mod download
 
-# 로컬 실행 (.env 파일 필요)
+# 로컬 실행. .env(선택, 없으면 환경변수로 주입)와 **실행 중인 Redis**가 필요하다 —
+# 채점 결과를 Redis Stream으로 발행하므로 연결에 실패하면 기동 자체가 중단된다(main.go Fatal).
+# 접속 정보는 REDIS_HOST(기본 localhost)/REDIS_PORT(기본 6379)/REDIS_PASSWORD로 설정한다.
+docker run -d --name judge-redis -p 6379:6379 redis:7-alpine
 go run .
 
 # 빌드
@@ -45,7 +48,8 @@ docker run --rm --privileged -v "$PWD":/workspace -v "$(go env GOMODCACHE)":/go/
 # 운영(k8s host cgroupns) 경로를 로컬에서 재현하려면 서버를 이렇게 띄운다
 # docker run --privileged --cgroupns=host <run 스테이지 이미지> ...
 
-# E2E 테스트 실행 (실제 서버를 로컬에 띄우고 진짜 HTTP 요청으로 검증. 로컬에 언어별 컴파일러/런타임 + OCI 자격증명 필요)
+# E2E 테스트 실행 (실제 서버를 로컬에 띄우고 진짜 HTTP 요청으로 검증.
+# 로컬에 언어별 컴파일러/런타임 + OCI 자격증명 + 실행 중인 Redis 필요 — 위 로컬 실행과 동일)
 go test -tags=e2e ./test/...
 ```
 
@@ -56,7 +60,7 @@ go test -tags=e2e ./test/...
 - unexported 식별자(`allTrue`, `checkDifference` 등)를 테스트해야 하면 `package problem_test`가 아닌 `package problem`(내부 테스트)으로 작성
 - 채점 로직 테스트에서 문제의 테스트케이스 픽스처는 **최소 5개**로 구성한다 (실제 문제가 최소 5개 테스트케이스를 보장하는 정책과 일치시키기 위함)
 
-"서버를 로컬에 띄우고 curl/API 호출로 어떤 요청을 하면 어떤 응답이 나와야 한다" 형식으로 e2e 테스트 작성을 요청하면 [test/e2e_test.go](test/e2e_test.go)의 패턴을 따라 E2E 테스트로 작성한다: `//go:build e2e` 빌드 태그로 일반 테스트와 분리하고, `route.RegisterRoutes`로 실제 서비스(진짜 Executor/파일저장소/OCI)를 그대로 띄운 뒤 `:0`으로 랜덤 포트를 확보(`OnListen` 훅으로 캡처)해 진짜 `net/http` 클라이언트로 요청한다. `submit` 엔드포인트는 OCI 버킷에 실제 문제 데이터가 있어야 검증 가능하므로, 요청 페이로드만으로 자기완결적인 `run` 엔드포인트 위주로 작성한다. 실행할 때마다 `run/{submitId}/` 디렉터리가 실제로 남고(응답에 submitId가 없어 자동 정리 불가) 이건 정상이니 놀라지 않는다.
+"서버를 로컬에 띄우고 curl/API 호출로 어떤 요청을 하면 어떤 응답이 나와야 한다" 형식으로 e2e 테스트 작성을 요청하면 [test/e2e_test.go](test/e2e_test.go)의 패턴을 따라 E2E 테스트로 작성한다: `//go:build e2e` 빌드 태그로 일반 테스트와 분리하고, `route.RegisterRoutes`로 실제 서비스(진짜 Executor/파일저장소/OCI/Redis)를 그대로 띄운 뒤 `:0`으로 랜덤 포트를 확보(`OnListen` 훅으로 캡처)해 진짜 `net/http` 클라이언트로 요청한다. `submit` 엔드포인트는 OCI 버킷에 실제 문제 데이터가 있어야 검증 가능하므로, 요청 페이로드만으로 자기완결적인 `run` 엔드포인트 위주로 작성한다. 실행할 때마다 `run/{submitId}/` 디렉터리가 실제로 남고(응답에 submitId가 없어 자동 정리 불가) 이건 정상이니 놀라지 않는다.
 
 ## Architecture
 
@@ -86,6 +90,7 @@ main.go
 - **cgroup** ([src/cgroup/cgroup.go](src/cgroup/cgroup.go)) — cgroup v2 기반 메모리 측정 계층. 테스트케이스 실행마다 `/sys/fs/cgroup/leita-judge/{pod}/{seq}`에 일회용 cgroup을 만들고, 채점 프로세스를 clone3(`CLONE_INTO_CGROUP`)로 그 안에서 시작시킨 뒤 종료 후 `memory.peak`을 읽는다(KB 단위). `{pod}`는 `os.Hostname()`(k8s 파드명/Docker 컨테이너 ID)으로, 같은 노드의 여러 judge 파드 간 격리 계층이다. `Setup()`이 시작 시 환경을 감지한다: `/proc/self/cgroup`이 `0::/`이면(로컬 Docker, private cgroupns) 루트 프로세스를 `main/` leaf로 옮겨 "no internal processes" 규칙을 회피하고, 아니면(k8s privileged + host cgroupns) 파드 계층만 만든다. 시작 시 자기 파드의 잔존 세션만 정리하며 다른 파드 디렉터리는 절대 건드리지 않는다. cgroup을 쓸 수 없으면(비-privileged 컨테이너, macOS) 경고 로그 후 측정값 0을 반환하는 폴백으로 기동한다. **측정 범위는 코드 실행(stdin~stdout)만이며 Build/Delete는 cgroup 밖에서 실행되어 절대 포함되지 않는다.**
 - **executor** ([src/executor/executor.go](src/executor/executor.go)) — `Executor` 인터페이스(Build/Run/Delete)의 실제 구현인 `OsExecutor`가 `os/exec`로 컴파일러/런타임 프로세스를 직접 구동한다. `Run`은 `context.WithTimeout`으로 제한 시간을 강제하고, cgroup 세션으로 메모리를 측정한다. 시간·메모리 제한 모두 service가 **언어별 버퍼를 적용한 값**(`language.TimeLimitWithBuffer`/`MemoryLimitWithBuffer`)을 넘겨주며, 메모리 초과 시 OOM kill로 `MEMORY_OUT`이 된다. 응답의 `usedTime`/`usedMemory`는 버퍼와 무관한 실측값이다 — 버퍼는 판정에만 쓰인다. 판정 우선순위는 **OOM(`JudgeMemoryOut`) → 타임아웃(`JudgeTimeOut`) → 비정상 종료(`JudgeRuntimeError`)** 순서다 — OOM kill은 SIGKILL이라 순서를 바꾸면 메모리 초과가 RUNTIME_ERROR나 TIME_OUT으로 오분류된다.
 - **repository/file** ([src/repository/file/repository.go](src/repository/file/repository.go)) — 로컬 파일시스템에 소스 코드/테스트케이스를 저장하는 `Repository` 인터페이스(`LocalRepository` 구현). 경로 규칙은 `{judgeType}/{submitId}/Main.{ext}`, `{judgeType}/{submitId}/in/{i}.in`, `{judgeType}/{submitId}/out/{i}.out`.
+- **datasource/redis** ([src/datasource/redis.go](src/datasource/redis.go)) — 채점 결과 발행용 Redis 클라이언트. `REDIS_HOST`(기본 `localhost`)/`REDIS_PORT`(기본 `6379`)/`REDIS_PASSWORD`로 설정하며, **기동 시 연결에 실패하면 서버가 뜨지 않는다**(`main.go`에서 Fatal).
 - **repository/problem** + **datasource** ([src/datasource/objectstorage.go](src/datasource/objectstorage.go)) — OCI Object Storage를 감싸는 계층. 문제의 정답 테스트케이스를 `problems/{problemId}/testcases`에서 읽어오고, 제출된 코드를 `submits/{submitId}/...`에 base64로 저장한다. **정책: 모든 문제는 최소 5개의 테스트케이스를 보장한다** — 문제 퀄리티를 위한 정책으로 문제 데이터 등록 단계에서 강제되며, 이 레포 코드에는 별도 검증 로직이 없다.
 - **service/problem** ([src/service/problem/service.go](src/service/problem/service.go)) — 채점 핵심 로직. 저장 → 빌드 → (테스트케이스별) 실행 → 출력 바이트 비교(`bytes.Equal`) → 결과 집계 순으로 진행하고, 빌드/삭제 실패 시에도 실행 파일 삭제(`Delete`)가 `defer`로 항상 시도된다.
 
@@ -93,7 +98,7 @@ main.go
 
 같은 `Service`가 두 가지 판정 흐름을 처리하며, `judgeType` 문자열("submit"/"run")로 파일 경로와 동작이 갈린다.
 
-- **submit** (`SubmitProblem`) — `submitId`는 요청에서 받은 실제 제출 ID. 테스트케이스는 OCI Object Storage의 문제 데이터에서 가져오고, 채점 후 제출 코드를 Object Storage에 base64로 영구 저장한다. 평균 사용 시간·사용 메모리는 첫 번째 테스트케이스(워밍업으로 간주 — 시간은 JIT/캐시 예열, 메모리는 페이지 캐시 첫 적재 비용)를 제외하고 계산한다(`judgeSubmit`의 `averageExcludingWarmup`).
+- **submit** (`SubmitProblem`) — **비동기다.** 핸들러는 고루틴으로 채점을 시작하고 즉시 `{"status":"RECEIVED"}`를 응답하며, 결과는 채점이 끝난 뒤 `PublishJudgeResult`가 Redis Stream(`REDIS_STREAM_KEY`, 기본 `judge-result-stream`)으로 발행한다. 동시 채점은 `judgeSemaphore`(현재 4개)로 제한하고, 고루틴 패닉은 recover해 `UNKNOWN` 결과를 발행하므로 요청이 유실되지 않는다. `submitId`는 요청에서 받은 실제 제출 ID. 테스트케이스는 OCI Object Storage의 문제 데이터에서 가져오고, 채점 후 제출 코드를 Object Storage에 base64로 영구 저장한다. 평균 사용 시간·사용 메모리는 첫 번째 테스트케이스(워밍업으로 간주 — 시간은 JIT/캐시 예열, 메모리는 페이지 캐시 첫 적재 비용)를 제외하고 계산한다(`judgeSubmit`의 `averageExcludingWarmup`).
 - **run** (`RunProblem`) — 코드 테스트/실행 목적. `submitId`는 매 요청마다 12자리 난수로 생성하고, 테스트케이스는 요청 바디에 실려온 것을 그대로 사용한다. Object Storage에 결과를 저장하지 않고, 각 테스트케이스의 실제 출력(base64)까지 응답에 포함한다.
 
 두 경우 모두 로컬 디렉터리 `submit/{id}/`, `run/{id}/`가 작업 공간으로 쓰이며(`.gitignore`에 포함되어 커밋되지 않음), 채점 완료 후 빌드 산출물만 `Delete` 커맨드로 정리되고 소스/입출력 파일은 남는다.
@@ -106,7 +111,7 @@ main.go
 
 ### API
 
-Fiber 앱은 `/api/problem/submit/:problemId`, `/api/problem/run/:problemId` (둘 다 POST)를 노출하며, `/swagger.json` 및 `/api/swagger/*`로 Swagger UI를 제공한다(`docs/`는 `go tool swag init`으로 생성되는 파일이므로 수동 편집 금지).
+Fiber 앱은 `/api/problem/submit/:problemId`, `/api/problem/run/:problemId` (둘 다 POST)를 노출한다. **`submit`은 접수 응답만 즉시 돌려주고 결과는 Redis Stream으로 발행**하는 반면, `run`은 채점이 끝날 때까지 기다렸다가 케이스별 결과를 응답 본문에 담아 반환한다. 또한 `/swagger.json` 및 `/api/swagger/*`로 Swagger UI를 제공한다(`docs/`는 `go tool swag init`으로 생성되는 파일이므로 수동 편집 금지).
 
 ## Commit Message Convention
 
