@@ -353,3 +353,62 @@ func TestRunProblem(t *testing.T) {
 		})
 	}
 }
+
+// 미지원 언어는 파일 저장·빌드·실행 이전에 걸러져야 한다.
+// 그냥 진행하면 빈 실행 커맨드로 executor에서 인덱스 패닉이 난다.
+func TestUnsupportedLanguage(t *testing.T) {
+	limit := entity.Limit{Time: 1000, Memory: 65536}
+
+	t.Run("SubmitProblem은 부작용 없이 에러를 반환한다", func(t *testing.T) {
+		exec := &fakeExecutor{}
+		storage := &fakeStorage{}
+		service := NewService(storage, &fakeFileRepo{}, exec, nil)
+
+		result, _, _, err := service.SubmitProblem(entity.SubmitProblemDTO{
+			ProblemId: "1",
+			SubmitId:  1,
+			Language:  "HASKELL",
+			Code:      []byte("main = print 42"),
+			Limit:     limit,
+		})
+
+		if result != entity.JudgeUnknown {
+			t.Errorf("result = %v, want UNKNOWN", result)
+		}
+		if err == nil {
+			t.Error("err = nil, 미지원 언어는 에러여야 한다")
+		}
+		if exec.runCalls != 0 || exec.deleteCalls != 0 {
+			t.Errorf("실행(%d)/삭제(%d)가 시도됨 — 언어 확인 전에 진행하면 안 된다", exec.runCalls, exec.deleteCalls)
+		}
+		if storage.saveCodeCalls != 0 {
+			t.Errorf("SaveCode가 %d회 호출됨 — 미지원 언어는 저장도 하면 안 된다", storage.saveCodeCalls)
+		}
+	})
+
+	t.Run("RunProblem도 동일하게 걸러진다", func(t *testing.T) {
+		exec := &fakeExecutor{}
+		service := NewService(&fakeStorage{}, &fakeFileRepo{}, exec, nil)
+
+		results := service.RunProblem(entity.RunProblemDTO{
+			ProblemId: "1",
+			Language:  "HASKELL",
+			Code:      []byte("main = print 42"),
+			Limit:     limit,
+			TestCases: []entity.TestCase{{Input: b64("1 2"), Output: b64("3")}},
+		})
+
+		if len(results) != 1 {
+			t.Fatalf("len(results) = %d, want 1", len(results))
+		}
+		if results[0].Result != entity.JudgeUnknown {
+			t.Errorf("result = %v, want UNKNOWN", results[0].Result)
+		}
+		if results[0].Error == nil {
+			t.Error("Error = nil, 미지원 언어는 에러여야 한다")
+		}
+		if exec.runCalls != 0 || exec.deleteCalls != 0 {
+			t.Errorf("실행(%d)/삭제(%d)가 시도됨", exec.runCalls, exec.deleteCalls)
+		}
+	})
+}
