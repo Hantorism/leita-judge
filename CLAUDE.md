@@ -114,6 +114,8 @@ main.go
 
 런타임 설치만으로 끝나지 않는 언어가 둘 있다. **C#**(`Dockerfile-cs`)은 프로젝트 파일이 있어야 빌드되므로 `/template/Main.csproj`를 이미지에 구워 두고(NuGet 캐시도 함께 워밍) 제출마다 복사해 쓴다. **TypeScript**(`Dockerfile-typescript`)는 `tsc`와 함께 **`@types/node`를 전역 설치해야 한다** — 타입 정의가 없으면 `require`/`process`를 쓰는 정상 코드가 타입 에러로 잡혀 COMPILE_ERROR가 된다. 두 경로 모두 `language.CsprojTemplatePath`/`language.NodeTypeRoot` 상수와 이미지 내 실제 위치가 일치해야 한다.
 
+이미지 크기는 언어별 편차가 크다(TypeScript 220MB · Java 402MB · C# 942MB · Rust 1.11GB · **Swift 3.17GB**). Swift가 압도적으로 큰 이유는 툴체인에 채점과 무관한 IDE/디버거/패키지매니저(sourcekit-lsp 188MB, LLDB 300MB, SPM 157MB 등)가 포함되기 때문이며, 이를 제거하고 레이어를 평탄화하면 2.08GB까지 줄어드는 것을 확인했다(공식 `-slim` 태그는 컴파일러가 없어 쓸 수 없고, 상위 버전일수록 오히려 크다). 노드 디스크에 여유가 있으면 굳이 트리밍하지 않아도 되지만, 디스크 압박이 재발하면 여기부터 손보면 된다.
+
 **언어를 추가할 때 손볼 곳**: `src/language/language.go`의 `Commands`·`FileExtension`·`limitBuffers` 세 곳(빠뜨리면 `TestEverySupportedLanguageIsFullyConfigured`가 실패한다), `deploy/Dockerfile-{language}`, 그리고 레포 밖 GitOps의 Deployment(`privileged: true` 필수)·Service·Tekton 파이프라인의 `dockerfile-paths`/`deployment-files` 배열이다. 마지막 배열과 실제 파일명이 어긋나면 judge CI 전체가 실패한다.
 
 메모리 측정은 컨테이너 안에서 `/sys/fs/cgroup`이 rw여야 동작한다. k8s에서는 judge Deployment에 `securityContext.privileged: true`가 필요하며(GitOps 레포에서 관리), 없으면 서버는 정상 동작하되 `usedMemory`가 항상 0이다(폴백 모드). 노드 요구사항: cgroup v2 + 커널 5.19+(`memory.peak`).
