@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Leita Judge는 온라인 저지(online judge) 시스템의 코드 실행/채점 백엔드다. Go + Fiber v3로 작성되었으며, 제출된 소스 코드를 실제로 빌드/실행하고 테스트케이스와 비교하여 채점 결과를 반환한다. C, C++, Java, Python, JavaScript, Go, Kotlin, Swift를 지원한다.
+Leita Judge는 온라인 저지(online judge) 시스템의 코드 실행/채점 백엔드다. Go + Fiber v3로 작성되었으며, 제출된 소스 코드를 실제로 빌드/실행하고 테스트케이스와 비교하여 채점 결과를 반환한다. C, C++, Java, Python, JavaScript, Go, Kotlin, Swift, Rust, C#, TypeScript를 지원한다(언어 식별자는 `RUST`/`CS`/`TYPESCRIPT`).
 
 ## Commands
 
@@ -81,12 +81,13 @@ main.go
 | 언어 | 시간 | 메모리 |
 |---|---|---|
 | C, CPP | 보정 없음 | 보정 없음 |
+| SWIFT, RUST | 보정 없음 | +16MB |
 | GO | +2초 | +32MB |
-| PYTHON, JAVASCRIPT | ×3 + 2초 | +32MB |
+| PYTHON, JAVASCRIPT, TYPESCRIPT | ×3 + 2초 | +32MB |
+| CS | ×2 + 1초 | +64MB |
 | JAVA, KOTLIN | ×2 + 1초 | +128MB |
-| SWIFT | 보정 없음 | +16MB |
 
-**시간은 배수+가산, 메모리는 고정 가산**인 이유: 인터프리터의 느림은 작업량에 비례하지만, 메모리 오버헤드는 문제 제한과 무관한 상수(런타임 고정비 + GC 여유)다. C/C++에 보정을 주지 않는 것은 문제의 제한 자체가 C/C++ 기준으로 설계되기 때문이며, 마진을 주면 메모리 최적화 문제의 출제 의도가 깨진다. 시간 보정값은 BOJ 정책을, 메모리 보정값은 실측 오버헤드(C/C++ 0.3MB, Python 3.9MB, Go 6.1MB, JS 9.4MB, JVM 39.2MB)를 근거로 한다.
+**시간은 배수+가산, 메모리는 고정 가산**인 이유: 인터프리터의 느림은 작업량에 비례하지만, 메모리 오버헤드는 문제 제한과 무관한 상수(런타임 고정비 + GC 여유)다. C/C++에 보정을 주지 않는 것은 문제의 제한 자체가 C/C++ 기준으로 설계되기 때문이며, 마진을 주면 메모리 최적화 문제의 출제 의도가 깨진다. 시간 보정값은 BOJ 정책을, 메모리 보정값은 실측 오버헤드(C/C++ 0.3MB, Rust 1.0MB, Swift 1.8MB, Python 3.9MB, C# 5.7MB, Go 6.1MB, JS/TS 9.2~9.4MB, JVM 39.2MB)를 근거로 한다.
 
 **JVM 계열 실행 커맨드에는 `-Xms`를 주지 않는다.** 초기 힙을 크게 잡으면 JVM이 힙 예산이 넉넉하다고 판단해 GC를 미루다가 cgroup 상한에 먼저 부딪혀, 정상 코드가 `MEMORY_OUT`으로 오판정된다(실측: 동일 GC 부하 워크로드가 `-Xms1024m`에서는 224MB를 요구했고 제거 후 96MB로 줄었다). 반대로 `-Xmx`는 문제 제한보다 크게 유지해야 힙 한계 대신 cgroup OOM이 먼저 발생해 판정이 일관된다 — 줄이면 `OutOfMemoryError`가 나 `RUNTIME_ERROR`로 샌다.
 - **cgroup** ([src/cgroup/cgroup.go](src/cgroup/cgroup.go)) — cgroup v2 기반 메모리 측정 계층. 테스트케이스 실행마다 `/sys/fs/cgroup/leita-judge/{pod}/{seq}`에 일회용 cgroup을 만들고, 채점 프로세스를 clone3(`CLONE_INTO_CGROUP`)로 그 안에서 시작시킨 뒤 종료 후 `memory.peak`을 읽는다(KB 단위). `{pod}`는 `os.Hostname()`(k8s 파드명/Docker 컨테이너 ID)으로, 같은 노드의 여러 judge 파드 간 격리 계층이다. `Setup()`이 시작 시 환경을 감지한다: `/proc/self/cgroup`이 `0::/`이면(로컬 Docker, private cgroupns) 루트 프로세스를 `main/` leaf로 옮겨 "no internal processes" 규칙을 회피하고, 아니면(k8s privileged + host cgroupns) 파드 계층만 만든다. 시작 시 자기 파드의 잔존 세션만 정리하며 다른 파드 디렉터리는 절대 건드리지 않는다. cgroup을 쓸 수 없으면(비-privileged 컨테이너, macOS) 경고 로그 후 측정값 0을 반환하는 폴백으로 기동한다. **측정 범위는 코드 실행(stdin~stdout)만이며 Build/Delete는 cgroup 밖에서 실행되어 절대 포함되지 않는다.**
@@ -107,7 +108,11 @@ main.go
 
 ### 배포 구조
 
-`deploy/Dockerfile-{language}`가 언어별로 하나씩 존재한다. 모든 이미지가 동일한 Go 서버 바이너리를 빌드하지만, 최종 런타임 스테이지 베이스 이미지만 언어별 컴파일러/런타임(gcc, jdk, node, python 등)으로 다르게 지정된다 — 즉 언어별로 별도 컨테이너를 띄워 해당 언어의 코드만 처리하는 구조. Swift는 현재 Dockerfile 전체가 주석 처리되어 비활성화 상태다.
+`deploy/Dockerfile-{language}`가 언어별로 하나씩 존재한다. 모든 이미지가 동일한 Go 서버 바이너리를 빌드하지만, 최종 런타임 스테이지 베이스 이미지만 언어별 컴파일러/런타임(gcc, jdk, node, python 등)으로 다르게 지정된다 — 즉 언어별로 별도 컨테이너를 띄워 해당 언어의 코드만 처리하는 구조.
+
+런타임 설치만으로 끝나지 않는 언어가 둘 있다. **C#**(`Dockerfile-cs`)은 프로젝트 파일이 있어야 빌드되므로 `/template/Main.csproj`를 이미지에 구워 두고(NuGet 캐시도 함께 워밍) 제출마다 복사해 쓴다. **TypeScript**(`Dockerfile-typescript`)는 `tsc`와 함께 **`@types/node`를 전역 설치해야 한다** — 타입 정의가 없으면 `require`/`process`를 쓰는 정상 코드가 타입 에러로 잡혀 COMPILE_ERROR가 된다. 두 경로 모두 `language.CsprojTemplatePath`/`language.NodeTypeRoot` 상수와 이미지 내 실제 위치가 일치해야 한다.
+
+**언어를 추가할 때 손볼 곳**: `src/language/language.go`의 `Commands`·`FileExtension`·`limitBuffers` 세 곳(빠뜨리면 `TestEverySupportedLanguageIsFullyConfigured`가 실패한다), `deploy/Dockerfile-{language}`, 그리고 레포 밖 GitOps의 Deployment(`privileged: true` 필수)·Service·Tekton 파이프라인의 `dockerfile-paths`/`deployment-files` 배열이다. 마지막 배열과 실제 파일명이 어긋나면 judge CI 전체가 실패한다.
 
 메모리 측정은 컨테이너 안에서 `/sys/fs/cgroup`이 rw여야 동작한다. k8s에서는 judge Deployment에 `securityContext.privileged: true`가 필요하며(GitOps 레포에서 관리), 없으면 서버는 정상 동작하되 `usedMemory`가 항상 0이다(폴백 모드). 노드 요구사항: cgroup v2 + 커널 5.19+(`memory.peak`).
 

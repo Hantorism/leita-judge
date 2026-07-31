@@ -5,7 +5,16 @@ import (
 	"strings"
 )
 
-const FileName = "Main"
+const (
+	FileName = "Main"
+
+	// CsprojTemplatePath는 C# 이미지에 미리 넣어 두는 프로젝트 템플릿 위치다.
+	// 파일명이 곧 어셈블리 이름이 되므로 Main.csproj여야 Main.dll이 나온다.
+	CsprojTemplatePath = "/template/" + FileName + ".csproj"
+
+	// NodeTypeRoot는 TypeScript 이미지에 전역 설치된 @types 위치다.
+	NodeTypeRoot = "/usr/local/lib/node_modules/@types"
+)
 
 type Command struct {
 	BuildCmd  []string
@@ -59,6 +68,33 @@ var Commands = map[string]Command{
 		RunCmd:    []string{"{JUDGE_TYPE}/{SUBMIT_ID}/" + FileName},
 		DeleteCmd: []string{"rm", "{JUDGE_TYPE}/{SUBMIT_ID}/" + FileName},
 	},
+	// Rust 에디션은 2021로 고정한다. 2024는 static mut 전역에 참조가 생기면 하드 에러라
+	// PS에서 흔한 전역 배열 관용구가 깨진다. 전환은 이 플래그만 바꾸면 되고 버퍼 값에는 영향이 없다.
+	"RUST": {
+		BuildCmd:  []string{"rustc", "--edition", "2021", "-O", "-o", "{JUDGE_TYPE}/{SUBMIT_ID}/" + FileName, "{JUDGE_TYPE}/{SUBMIT_ID}/" + FileName + ".rs"},
+		RunCmd:    []string{"{JUDGE_TYPE}/{SUBMIT_ID}/" + FileName},
+		DeleteCmd: []string{"rm", "{JUDGE_TYPE}/{SUBMIT_ID}/" + FileName},
+	},
+	// C#은 프로젝트 파일이 있어야 빌드된다. 이미지에 넣어 둔 템플릿(CsprojTemplatePath)을
+	// 제출 디렉터리로 복사한 뒤 빌드하며, 템플릿 이름이 곧 산출물 이름(Main.dll)이 된다.
+	"CS": {
+		BuildCmd: []string{"sh", "-c",
+			"cp " + CsprojTemplatePath + " {JUDGE_TYPE}/{SUBMIT_ID}/ && " +
+				"dotnet build {JUDGE_TYPE}/{SUBMIT_ID}/" + FileName + ".csproj -c Release -o {JUDGE_TYPE}/{SUBMIT_ID}/out --nologo -v q"},
+		RunCmd: []string{"dotnet", "{JUDGE_TYPE}/{SUBMIT_ID}/out/" + FileName + ".dll"},
+		DeleteCmd: []string{"rm", "-rf",
+			"{JUDGE_TYPE}/{SUBMIT_ID}/out", "{JUDGE_TYPE}/{SUBMIT_ID}/obj", "{JUDGE_TYPE}/{SUBMIT_ID}/" + FileName + ".csproj"},
+	},
+	// TypeScript는 tsc로 JS를 만든 뒤 JavaScript와 동일한 런타임에서 실행한다.
+	// 사용자 코드가 require/process 등을 쓰므로 전역 @types/node를 타입 루트로 지정해야
+	// 정상 코드가 타입 에러(COMPILE_ERROR)로 오판정되지 않는다.
+	"TYPESCRIPT": {
+		BuildCmd: []string{"tsc", "--target", "ES2020", "--module", "commonjs",
+			"--typeRoots", NodeTypeRoot, "--types", "node",
+			"{JUDGE_TYPE}/{SUBMIT_ID}/" + FileName + ".ts"},
+		RunCmd:    []string{"node", "--stack-size=65536", "{JUDGE_TYPE}/{SUBMIT_ID}/" + FileName + ".js"},
+		DeleteCmd: []string{"rm", "{JUDGE_TYPE}/{SUBMIT_ID}/" + FileName + ".js"},
+	},
 }
 
 // limitBuffer는 언어 런타임의 고정 비용을 보상해 언어 간 형평성을 맞추는 보정값이다.
@@ -86,8 +122,15 @@ var limitBuffers = map[string]limitBuffer{
 	// JVM: 베이스라인 38MB + SerialGC 복사 공간. 실측상 +64MB가 최소 통과선이라 2배로 잡았다.
 	"JAVA":   {timeMultiplier: 2, timeAddMs: 1000, memoryAddKB: 128 * 1024},
 	"KOTLIN": {timeMultiplier: 2, timeAddMs: 1000, memoryAddKB: 128 * 1024},
-	// Swift: 네이티브지만 런타임 라이브러리가 있어 소폭만 가산한다 (현재 비활성 언어).
+	// Swift/Rust: 네이티브라 속도는 C와 동급(실측 1.0×)이고 오버헤드도 1~2MB에 그친다.
+	// 다만 문제 제한이 이 언어들 기준으로 설계되지는 않으므로 최소 쿠션만 둔다.
 	"SWIFT": {timeMultiplier: 1, memoryAddKB: 16 * 1024},
+	"RUST":  {timeMultiplier: 1, memoryAddKB: 16 * 1024},
+	// C#: GC 런타임이지만 오버헤드가 5.7MB(GC 압박 시 10.8MB)로 JVM(39.2MB)보다 훨씬 가볍다.
+	// 시간은 런타임 기동(17ms)과 JIT 웜업을 감안해 JVM과 같은 보정을 준다.
+	"CS": {timeMultiplier: 2, timeAddMs: 1000, memoryAddKB: 64 * 1024},
+	// TypeScript: JavaScript와 동일한 node 런타임이라 실측(하한 12MB, 오버헤드 9.2MB)도 같다.
+	"TYPESCRIPT": {timeMultiplier: 3, timeAddMs: 2000, memoryAddKB: 32 * 1024},
 }
 
 // bufferOf는 등록되지 않은 언어에 대해 보정 없음(배수 1, 가산 0)을 보장한다.
@@ -137,6 +180,12 @@ func FileExtension(language string) string {
 		return "py"
 	case "SWIFT":
 		return "swift"
+	case "RUST":
+		return "rs"
+	case "CS":
+		return "cs"
+	case "TYPESCRIPT":
+		return "ts"
 	default:
 		return "error"
 	}

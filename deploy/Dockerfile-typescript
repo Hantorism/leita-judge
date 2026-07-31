@@ -1,0 +1,21 @@
+FROM docker.io/library/golang:1.26.2-alpine3.23 AS golang
+FROM docker.io/library/node:22.13.1-alpine3.21 AS node
+
+FROM golang AS build
+WORKDIR /workspace
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o server .
+
+FROM node AS run
+# tsc와 @types/node를 전역 설치한다. 타입 정의가 없으면 require/process를 쓰는
+# 정상 코드가 타입 에러로 잡혀 COMPILE_ERROR가 되므로 @types/node는 필수다.
+# (설치 위치는 language.NodeTypeRoot와 일치해야 한다)
+RUN npm i -g typescript@5.7.3 @types/node@22.10.7 && npm cache clean --force
+
+WORKDIR /workspace
+COPY --from=build /workspace/server .
+COPY --from=build /workspace/docs ./docs
+CMD ./server
+EXPOSE 1323

@@ -1,0 +1,27 @@
+FROM docker.io/library/golang:1.26.2-alpine3.23 AS golang
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS dotnet
+
+FROM golang AS build
+WORKDIR /workspace
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o server .
+
+FROM dotnet AS run
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    DOTNET_NOLOGO=1
+
+# 제출마다 복사해 쓸 프로젝트 템플릿. 파일명이 곧 어셈블리 이름이라 Main.csproj → Main.dll이 된다.
+# 여기서 한 번 빌드해 NuGet 캐시를 미리 채워 두면 제출 빌드가 빨라진다.
+RUN mkdir -p /template && cd /template && \
+    dotnet new console -o . --name Main && \
+    mv *.csproj Main.csproj 2>/dev/null || true && \
+    dotnet build -c Release -o /tmp/warmup && \
+    rm -rf /tmp/warmup /template/bin /template/obj /template/Program.cs
+
+WORKDIR /workspace
+COPY --from=build /workspace/server .
+COPY --from=build /workspace/docs ./docs
+CMD ./server
+EXPOSE 1323
