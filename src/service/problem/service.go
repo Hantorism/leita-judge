@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"math"
 	"math/rand"
 	"os"
@@ -63,6 +64,12 @@ func (service *Service) SubmitProblem(dto entity.SubmitProblemDTO) (entity.Judge
 	memoryLimit := dto.Limit.Memory
 
 	printSubmitProblemInfo(lang, submitId, problemId, code, timeLimit, memoryLimit)
+
+	if !language.Supports(lang) {
+		err := fmt.Errorf("지원하지 않는 언어입니다: %s", lang)
+		log.Error(err)
+		return entity.JudgeUnknown, 0, 0, err
+	}
 
 	if err := service.saveSubmitTestCases(submitId, problemId); err != nil {
 		log.Error(err)
@@ -125,6 +132,12 @@ func (service *Service) RunProblem(dto entity.RunProblemDTO) []entity.RunProblem
 	submitId := minId + rand.Intn(maxId-minId)
 
 	printRunProblemInfo(lang, submitId, problemId, code, testCases, timeLimit, memoryLimit)
+
+	if !language.Supports(lang) {
+		err := fmt.Errorf("지원하지 않는 언어입니다: %s", lang)
+		log.Error(err)
+		return []entity.RunProblemResult{{Result: entity.JudgeUnknown, Error: err}}
+	}
 
 	inputs, outputs := filerepo.TestCasesFromRequest(testCases)
 	if err := service.fileRepo.SaveTestCases(submitId, inputs, outputs, "run"); err != nil {

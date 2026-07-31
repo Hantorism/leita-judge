@@ -32,6 +32,25 @@ func TestFileExtension(t *testing.T) {
 	}
 }
 
+func TestSupports(t *testing.T) {
+	supported := []string{"C", "CPP", "GO", "JAVA", "JAVASCRIPT", "KOTLIN", "PYTHON", "SWIFT", "RUST", "CS", "TYPESCRIPT"}
+	for _, lang := range supported {
+		t.Run(lang+"는 지원한다", func(t *testing.T) {
+			if !Supports(lang) {
+				t.Errorf("Supports(%q) = false, want true", lang)
+			}
+		})
+	}
+
+	for _, lang := range []string{"HASKELL", "typescript", "C#", ""} {
+		t.Run("미지원: "+lang, func(t *testing.T) {
+			if Supports(lang) {
+				t.Errorf("Supports(%q) = true, want false", lang)
+			}
+		})
+	}
+}
+
 // 모든 지원 언어는 실행 커맨드와 버퍼 항목을 반드시 가져야 한다.
 // 빈 실행 커맨드는 executor에서 인덱스 패닉으로 이어지고,
 // 버퍼 항목이 없으면 보정 없이 채점되어 언어 간 형평성이 깨진다.

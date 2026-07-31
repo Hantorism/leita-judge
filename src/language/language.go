@@ -97,6 +97,14 @@ var Commands = map[string]Command{
 	},
 }
 
+// Supports는 이 저지가 해당 언어를 처리할 수 있는지 반환한다. 언어별로 파드가 분리되어
+// 있어 오타나 미배포 언어 요청이 들어올 수 있는데, 확인 없이 진행하면 빈 실행 커맨드로
+// 패닉이 난다.
+func Supports(language string) bool {
+	_, ok := Commands[language]
+	return ok
+}
+
 // limitBuffer는 언어 런타임의 고정 비용을 보상해 언어 간 형평성을 맞추는 보정값이다.
 // 시간은 인터프리터의 느림이 작업량에 비례하므로 배수+가산으로, 메모리는 런타임
 // 고정비가 문제 제한과 무관한 상수이므로 고정 가산으로만 보정한다.
