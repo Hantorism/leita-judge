@@ -16,7 +16,10 @@ func TestFileExtension(t *testing.T) {
 		{"KOTLIN", "KOTLIN", "kt"},
 		{"PYTHON", "PYTHON", "py"},
 		{"SWIFT", "SWIFT", "swift"},
-		{"unknown language", "RUST", "error"},
+		{"RUST", "RUST", "rs"},
+		{"CS", "CS", "cs"},
+		{"TYPESCRIPT", "TYPESCRIPT", "ts"},
+		{"unknown language", "HASKELL", "error"},
 	}
 
 	for _, tt := range tests {
@@ -24,6 +27,25 @@ func TestFileExtension(t *testing.T) {
 			got := FileExtension(tt.language)
 			if got != tt.want {
 				t.Errorf("FileExtension(%q) = %q, want %q", tt.language, got, tt.want)
+			}
+		})
+	}
+}
+
+// 모든 지원 언어는 실행 커맨드와 버퍼 항목을 반드시 가져야 한다.
+// 빈 실행 커맨드는 executor에서 인덱스 패닉으로 이어지고,
+// 버퍼 항목이 없으면 보정 없이 채점되어 언어 간 형평성이 깨진다.
+func TestEverySupportedLanguageIsFullyConfigured(t *testing.T) {
+	for lang, command := range Commands {
+		t.Run(lang, func(t *testing.T) {
+			if len(command.RunCmd) == 0 {
+				t.Errorf("%s: RunCmd가 비어 있다", lang)
+			}
+			if FileExtension(lang) == "error" {
+				t.Errorf("%s: FileExtension이 정의되지 않았다", lang)
+			}
+			if _, ok := limitBuffers[lang]; !ok {
+				t.Errorf("%s: limitBuffers 항목이 없다", lang)
 			}
 		})
 	}

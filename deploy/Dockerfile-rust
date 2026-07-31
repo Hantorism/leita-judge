@@ -1,5 +1,5 @@
 FROM docker.io/library/golang:1.26.2-alpine3.23 AS golang
-FROM docker.io/library/swift:6.0.3 AS swift
+FROM docker.io/library/rust:1.97-alpine3.21 AS rust
 
 FROM golang AS build
 WORKDIR /workspace
@@ -8,7 +8,10 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o server .
 
-FROM swift AS run
+FROM rust AS run
+# rustc는 링크에 시스템 링커를 쓴다 (alpine 이미지에는 기본 포함되지 않음)
+RUN apk add --no-cache musl-dev
+
 WORKDIR /workspace
 COPY --from=build /workspace/server .
 COPY --from=build /workspace/docs ./docs
