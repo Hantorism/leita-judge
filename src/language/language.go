@@ -24,9 +24,14 @@ var Commands = map[string]Command{
 		RunCmd:    []string{"{JUDGE_TYPE}/{SUBMIT_ID}/" + FileName},
 		DeleteCmd: []string{"rm", "{JUDGE_TYPE}/{SUBMIT_ID}/" + FileName},
 	},
+	// JVM 계열의 RunCmd에는 -Xms를 주지 않는다. 초기 힙을 크게 잡으면 JVM이 힙 예산이
+	// 넉넉하다고 판단해 GC를 미루다가 cgroup 상한에 먼저 부딪혀, 정상 코드가 MEMORY_OUT으로
+	// 오판정된다(실측: 동일 GC 부하 워크로드가 -Xms1024m에서는 224MB, 제거 시 96MB 필요).
+	// 반대로 -Xmx는 문제 제한보다 크게 유지해야 힙 한계 대신 cgroup OOM이 먼저 발생해
+	// MEMORY_OUT 판정이 일관된다(줄이면 OutOfMemoryError → RUNTIME_ERROR로 샌다).
 	"JAVA": {
 		BuildCmd:  []string{"javac", "-J-Xms1024m", "-J-Xmx1920m", "-J-Xss512m", "-encoding", "UTF-8", "-d", "bin", "{JUDGE_TYPE}/{SUBMIT_ID}/" + FileName + ".java"},
-		RunCmd:    []string{"java", "-Xms1024m", "-Xmx1920m", "-Xss512m", "-Dfile.encoding=UTF-8", "-XX:+UseSerialGC", "-cp", "bin", FileName},
+		RunCmd:    []string{"java", "-Xmx1920m", "-Xss512m", "-Dfile.encoding=UTF-8", "-XX:+UseSerialGC", "-cp", "bin", FileName},
 		DeleteCmd: []string{"rm", "-r", "{JUDGE_TYPE}/{SUBMIT_ID}/bin"},
 	},
 	"PYTHON": {
@@ -46,7 +51,7 @@ var Commands = map[string]Command{
 	},
 	"KOTLIN": {
 		BuildCmd:  []string{"kotlinc", "-J-Xms1024m", "-J-Xmx1920m", "-J-Xss512m", "-include-runtime", "-d", "{JUDGE_TYPE}/{SUBMIT_ID}/" + FileName + ".jar", "{JUDGE_TYPE}/{SUBMIT_ID}/" + FileName + ".kt"},
-		RunCmd:    []string{"java", "-Xms1024m", "-Xmx1920m", "-Xss512m", "-Dfile.encoding=UTF-8", "-XX:+UseSerialGC", "-jar", "{JUDGE_TYPE}/{SUBMIT_ID}/" + FileName + ".jar"},
+		RunCmd:    []string{"java", "-Xmx1920m", "-Xss512m", "-Dfile.encoding=UTF-8", "-XX:+UseSerialGC", "-jar", "{JUDGE_TYPE}/{SUBMIT_ID}/" + FileName + ".jar"},
 		DeleteCmd: []string{"rm", "{JUDGE_TYPE}/{SUBMIT_ID}/" + FileName + ".jar"},
 	},
 	"SWIFT": {
